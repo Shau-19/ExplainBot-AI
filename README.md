@@ -5,9 +5,8 @@
 
 ## 🎥 Live Demo
 
-<p align="center">
-  <video src="assets/video_1771598634.mp4" controls width="850"></video>
-</p>
+[▶️ Click here to watch the full demo](assets/video_1771598634.mp4)
+
 
 ExplainBot dynamically selects the best explanation format based on query intent — text, narrated audio, or fully synchronized explainer video with rendered architecture diagrams.
 ---
