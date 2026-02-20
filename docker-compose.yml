@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  explainbot:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend/outputs:/app/backend/outputs
+      - ./backend/uploads:/app/backend/uploads
+    restart: unless-stopped
