@@ -1,10 +1,15 @@
 # ExplainBot AI
 
 > An agentic document intelligence system that converts technical documents into text, audio, or synchronized video explanations — using a custom-built multi-agent pipeline, not a single API call.
+---
 
-<!-- Replace with your GitHub-uploaded video URL -->
-https://github.com/Shau-19/explainbot-ai/assets/video_1771620365.mp4
+## 🎥 Live Demo
 
+<p align="center">
+  <video src="assets/video_1771598634.mp4" controls width="850"></video>
+</p>
+
+ExplainBot dynamically selects the best explanation format based on query intent — text, narrated audio, or fully synchronized explainer video with rendered architecture diagrams.
 ---
 
 ## The Problem It Solves
