@@ -5,7 +5,7 @@
 
 ## 🎥 Live Demo
 
-[▶️ Click here to watch the full demo](assets/video_1771598634.mp4)
+[Demo Link](https://explainbot-ai-v1.onrender.com)
 
 
 
