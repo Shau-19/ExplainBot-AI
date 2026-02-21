@@ -1,6 +1,4 @@
-"""
-Video Service - Scene-by-scene sync, real audio durations, fixed text wrapping
-"""
+
 import time
 import numpy as np
 from pathlib import Path
@@ -17,6 +15,32 @@ COLORS = {
     'text_white': '#f8fafc',
     'text_gray':  '#94a3b8',
 }
+
+# Font paths — Liberation Sans ships with fonts-liberation on Debian/Ubuntu
+# Falls back through options until one works
+FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+    "arial.ttf",  # Windows fallback
+]
+FONT_BOLD_CANDIDATES = [
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/liberation/LiberationSans-Bold.ttf",
+    "arialbd.ttf",
+]
+
+def _find_font(candidates: list, size: int) -> ImageFont.ImageFont:
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size)
+        except:
+            continue
+    return ImageFont.load_default()
+
+def get_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
+    return _find_font(FONT_BOLD_CANDIDATES if bold else FONT_CANDIDATES, size)
 
 
 class VideoService:
@@ -170,27 +194,17 @@ class VideoService:
         for i, point in enumerate(points):
             y = y_start + (i * point_spacing)
 
-            # Badge
             bx, by = 80, y
             draw.ellipse([(bx, by), (bx+55, by+55)], fill=self._hex(COLORS['accent']))
 
-            try:
-                font = ImageFont.truetype("arialbd.ttf", 32)
-            except:
-                font = ImageFont.load_default()
-
+            num_font = get_font(32, bold=True)
             num = str(i+1)
-            bbox = draw.textbbox((0, 0), num, font=font)
+            bbox = draw.textbbox((0, 0), num, font=num_font)
             draw.text((bx + 27 - (bbox[2]-bbox[0])//2, by + 10), num,
-                      fill=self._hex(COLORS['text_white']), font=font)
+                      fill=self._hex(COLORS['text_white']), font=num_font)
 
-            # Point text — wrap to 2 lines if needed
             lines = self._wrap_text(point, max_chars=52)
-            try:
-                tf = ImageFont.truetype("arial.ttf", 28)
-            except:
-                tf = ImageFont.load_default()
-
+            tf = get_font(28)
             for j, line in enumerate(lines[:2]):
                 draw.text((155, y + 5 + j * 35), line,
                           fill=self._hex(COLORS['text_white']), font=tf)
@@ -228,7 +242,6 @@ class VideoService:
     # ── Helpers ──────────────────────────────────────────────
 
     def _wrap_text(self, text: str, max_chars: int = 40) -> list:
-        """Wrap text into lines of max_chars length."""
         if len(text) <= max_chars:
             return [text]
         words = text.split()
@@ -249,11 +262,7 @@ class VideoService:
         return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
 
     def _draw_centered_text(self, draw, text: str, y: int, size: int, color: str, bold: bool = False):
-        try:
-            font = ImageFont.truetype("arialbd.ttf" if bold else "arial.ttf", size)
-        except:
-            font = ImageFont.load_default()
-
+        font = get_font(size, bold)
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
         x = max(20, (WIDTH - text_width) // 2)
