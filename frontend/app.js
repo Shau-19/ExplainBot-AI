@@ -1,22 +1,22 @@
 const API_BASE = '';
 
-// ─── State ───────────────────────────────────────────────
-let queryHistory = []; // [{query, format, language, output, timestamp}]
+// ─── State ────────────────────────────────────────────────
+let queryHistory = [];
 
-// ─── Markdown Parser ─────────────────────────────────────
+// ─── Markdown Parser ──────────────────────────────────────
 function parseMarkdown(text) {
     return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em class="text-zinc-300">$1</em>')
-        .replace(/^### (.*$)/gm, '<h3 class="text-base font-semibold text-white mt-4 mb-1">$1</h3>')
-        .replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold text-white mt-6 mb-2">$1</h2>')
-        .replace(/^- (.*$)/gm, '<li class="ml-4 list-disc text-zinc-300">$1</li>')
-        .replace(/^(\d+)\. (.*$)/gm, '<li class="ml-4 text-zinc-300"><span class="text-blue-400 font-mono mr-2">$1.</span>$2</li>')
-        .replace(/\n\n/g, '</p><p class="mt-3 text-zinc-300">')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:white;font-weight:600;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="color:#c4c8e0;">$1</em>')
+        .replace(/^### (.*$)/gm, '<h3 style="font-size:1rem;font-weight:600;color:white;margin-top:16px;margin-bottom:4px;">$1</h3>')
+        .replace(/^## (.*$)/gm, '<h2 style="font-size:1.1rem;font-weight:600;color:white;margin-top:20px;margin-bottom:6px;">$1</h2>')
+        .replace(/^- (.*$)/gm, '<li style="margin-left:16px;list-style:disc;color:#c4c8e0;">$1</li>')
+        .replace(/^(\d+)\. (.*$)/gm, '<li style="margin-left:16px;color:#c4c8e0;"><span style="color:#60a5fa;font-family:monospace;margin-right:6px;">$1.</span>$2</li>')
+        .replace(/\n\n/g, '</p><p style="margin-top:12px;color:#c4c8e0;">')
         .replace(/\n/g, '<br>');
 }
 
-// ─── Upload Handling ──────────────────────────────────────
+// ─── Upload ───────────────────────────────────────────────
 document.getElementById('fileInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -24,9 +24,9 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     const statusDiv = document.getElementById('uploadStatus');
     statusDiv.classList.remove('hidden');
     statusDiv.innerHTML = `
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-800">
-            <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-blue-400 text-sm mono">Uploading ${file.name}...</p>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px;border-radius:8px;background:rgba(59,130,246,0.06);border:1px solid #1d4ed8;">
+            <div style="width:16px;height:16px;border:2px solid #3b82f6;border-top-color:transparent;border-radius:50%;animation:spin 0.9s linear infinite;"></div>
+            <p style="color:#60a5fa;font-size:0.8rem;font-family:monospace;">Uploading ${file.name}...</p>
         </div>`;
 
     const formData = new FormData();
@@ -35,14 +35,13 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     try {
         const response = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
         const data = await response.json();
-
         if (data.success) {
             renderDocumentList(data.document_names);
             document.getElementById('querySection').style.display = 'block';
             document.getElementById('querySection').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     } catch (error) {
-        statusDiv.innerHTML = `<div class="p-4 rounded border border-red-900 text-red-400 text-sm">Upload failed: ${error.message}</div>`;
+        statusDiv.innerHTML = `<div style="padding:14px;border-radius:8px;border:1px solid #7f1d1d;color:#f87171;font-size:0.8rem;">Upload failed: ${error.message}</div>`;
     }
 });
 
@@ -50,18 +49,17 @@ function renderDocumentList(names) {
     const statusDiv = document.getElementById('uploadStatus');
     statusDiv.classList.remove('hidden');
     statusDiv.innerHTML = `
-        <div class="p-4 rounded border border-zinc-700 bg-zinc-900">
-            <p class="text-xs text-zinc-500 mono mb-2">LOADED DOCUMENTS (${names.length})</p>
-            <div class="flex flex-wrap gap-2">
+        <div style="padding:14px;border-radius:8px;background:#12121f;border:1px solid #22223a;">
+            <p style="font-size:0.65rem;font-family:monospace;color:#6b7099;margin-bottom:8px;">LOADED DOCUMENTS (${names.length})</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 ${names.map(name => `
-                    <div class="flex items-center gap-2 px-3 py-1 bg-zinc-800 rounded text-sm">
-                        <span class="text-green-400">✓</span>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;background:#1a1a2e;border-radius:6px;border:1px solid #22223a;font-size:0.8rem;">
+                        <span style="color:#4ade80;">✓</span>
                         <span>${name}</span>
-                        <button onclick="removeDocument('${name}')" class="text-zinc-600 hover:text-red-400 ml-1">✕</button>
-                    </div>
-                `).join('')}
+                        <button onclick="removeDocument('${name}')" style="color:#444;background:none;border:none;cursor:pointer;font-size:0.8rem;" onmouseenter="this.style.color='#f87171'" onmouseleave="this.style.color='#444'">✕</button>
+                    </div>`).join('')}
             </div>
-            <label for="fileInput" class="mt-3 inline-block text-xs text-blue-400 hover:text-blue-300 cursor-pointer">+ Add another document</label>
+            <label for="fileInput" style="margin-top:10px;display:inline-block;font-size:0.7rem;color:#3b82f6;cursor:pointer;font-family:monospace;">+ Add another document</label>
         </div>`;
 }
 
@@ -75,19 +73,15 @@ async function removeDocument(filename) {
         } else {
             renderDocumentList(data.remaining);
         }
-    } catch (e) {
-        console.error('Remove failed:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-// ─── Query Submission ─────────────────────────────────────
+// ─── Query Submit ─────────────────────────────────────────
 document.getElementById('queryForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const query = document.getElementById('queryInput').value;
     const language = document.getElementById('languageSelect').value;
     const formatHint = document.getElementById('formatHint').value;
-
-    showLoading('Analyzing query...');
 
     try {
         if (formatHint === 'video') {
@@ -103,7 +97,7 @@ document.getElementById('queryForm').addEventListener('submit', async (e) => {
 
 // ─── Generate Explanation ─────────────────────────────────
 async function generateExplanation(query, language, formatHint = 'auto') {
-    updateLoadingText('Generating explanation...');
+    showLoading('text');
 
     const formData = new FormData();
     formData.append('query', query);
@@ -113,10 +107,11 @@ async function generateExplanation(query, language, formatHint = 'auto') {
 
     const response = await fetch(`${API_BASE}/api/explain`, { method: 'POST', body: formData });
     const data = await response.json();
+
     if (response.status === 429) { hideLoading(); alert(data.detail); fetchUsage(); return; }
 
     if (data.format === 'video') {
-        updateLoadingText('Switching to video mode...');
+        hideLoading();
         await generateVideo(query, language);
         return;
     }
@@ -128,23 +123,44 @@ async function generateExplanation(query, language, formatHint = 'auto') {
 
 // ─── Generate Video ───────────────────────────────────────
 async function generateVideo(query, language) {
-    updateLoadingText('Planning scenes...');
+    showLoading('video');
 
     const formData = new FormData();
     formData.append('query', query);
     formData.append('language', language);
 
-    setTimeout(() => updateLoadingText('Rendering diagram...'), 3000);
-    setTimeout(() => updateLoadingText('Generating narration...'), 8000);
-    setTimeout(() => updateLoadingText('Composing video...'), 15000);
+    // Step-by-step progress
+    const steps = ['step1','step2','step3','step4'];
+    let stepIndex = 0;
+    setStep(steps[stepIndex], 'active');
+
+    const stepTimings = [0, 4000, 9000, 16000];
+    stepTimings.forEach((delay, i) => {
+        setTimeout(() => {
+            if (i > 0) setStep(steps[i-1], 'done');
+            if (i < steps.length) setStep(steps[i], 'active');
+        }, delay);
+    });
 
     const response = await fetch(`${API_BASE}/api/generate-video`, { method: 'POST', body: formData });
     const data = await response.json();
+
+    // Mark all done
+    steps.forEach(s => setStep(s, 'done'));
+    await new Promise(r => setTimeout(r, 400));
+
     hideLoading();
     if (response.status === 429) { alert(data.detail); fetchUsage(); return; }
     displayVideoResults(data);
     fetchUsage();
     addToHistory(query, data.detected_language, 'video', 'video', data);
+}
+
+function setStep(id, state) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('active', 'done');
+    if (state) el.classList.add(state);
 }
 
 // ─── Display Results ──────────────────────────────────────
@@ -154,54 +170,53 @@ function displayResults(data) {
 
     const decision = data.agent_decision;
     document.getElementById('agentDecision').innerHTML = `
-        <div class="grid grid-cols-3 gap-3 mb-4">
-            <div class="p-3 rounded border border-zinc-800 bg-zinc-900 text-center">
-                <p class="text-xs text-zinc-600 mono mb-1">FORMAT</p>
-                <p class="font-semibold text-blue-400">${decision.format.toUpperCase()}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div style="padding:12px;border-radius:8px;background:#12121f;border:1px solid #22223a;text-align:center;">
+                <p style="font-size:0.65rem;font-family:monospace;color:#6b7099;margin-bottom:4px;">FORMAT</p>
+                <p style="font-weight:600;color:#60a5fa;">${decision.format.toUpperCase()}</p>
             </div>
-            <div class="p-3 rounded border border-zinc-800 bg-zinc-900 text-center">
-                <p class="text-xs text-zinc-600 mono mb-1">COMPLEXITY</p>
-                <p class="font-semibold capitalize">${decision.complexity}</p>
+            <div style="padding:12px;border-radius:8px;background:#12121f;border:1px solid #22223a;text-align:center;">
+                <p style="font-size:0.65rem;font-family:monospace;color:#6b7099;margin-bottom:4px;">COMPLEXITY</p>
+                <p style="font-weight:600;text-transform:capitalize;">${decision.complexity}</p>
             </div>
-            <div class="p-3 rounded border border-zinc-800 bg-zinc-900 text-center">
-                <p class="text-xs text-zinc-600 mono mb-1">LANGUAGE</p>
-                <p class="font-semibold text-purple-400">${(data.detected_language || 'en').toUpperCase()}</p>
+            <div style="padding:12px;border-radius:8px;background:#12121f;border:1px solid #22223a;text-align:center;">
+                <p style="font-size:0.65rem;font-family:monospace;color:#6b7099;margin-bottom:4px;">LANGUAGE</p>
+                <p style="font-weight:600;color:#a78bfa;">${(data.detected_language || 'en').toUpperCase()}</p>
             </div>
         </div>
-        <div class="p-3 rounded border border-zinc-800 bg-zinc-900 text-xs text-zinc-500 mono">
+        <div style="padding:10px 14px;border-radius:6px;background:#12121f;border:1px solid #22223a;font-size:0.7rem;font-family:monospace;color:#6b7099;">
             AI: ${decision.reasoning}
         </div>`;
 
-    let explanationHTML = `
-        <div class="mt-6 text-zinc-300 leading-8">
-            <p class="mt-3 text-zinc-300">${parseMarkdown(data.explanation.text)}</p>
-        </div>`;
+    let html = `<div style="margin-top:20px;color:#c4c8e0;line-height:1.8;">
+        <p style="color:#c4c8e0;">${parseMarkdown(data.explanation.text)}</p>
+    </div>`;
 
     if (data.audio) {
-        explanationHTML += `
-            <div class="mt-6 p-4 rounded border border-zinc-800 bg-zinc-900">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-sm font-medium">Audio Narration <span class="text-xs text-zinc-600 mono ml-2">${data.audio.provider}</span></p>
-                    <a href="${API_BASE}/api/audio/${data.audio.filename}" download class="text-xs text-blue-400 hover:text-blue-300">Download</a>
-                </div>
-                <audio controls class="w-full">
-                    <source src="${API_BASE}/api/audio/${data.audio.filename}" type="audio/mpeg">
-                </audio>
-            </div>`;
+        html += `
+        <div style="margin-top:20px;padding:16px;border-radius:8px;background:#12121f;border:1px solid #22223a;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <p style="font-size:0.85rem;font-weight:600;">Audio Narration <span style="font-size:0.65rem;font-family:monospace;color:#6b7099;margin-left:6px;">${data.audio.provider}</span></p>
+                <a href="${API_BASE}/api/audio/${data.audio.filename}" download style="font-size:0.7rem;color:#60a5fa;">Download</a>
+            </div>
+            <audio controls style="width:100%;">
+                <source src="${API_BASE}/api/audio/${data.audio.filename}" type="audio/mpeg">
+            </audio>
+        </div>`;
     }
 
-    // PDF Export button
     if (data.pdf_export) {
-        explanationHTML += `
-            <div class="mt-4">
-                <a href="${API_BASE}/api/export/${data.pdf_export}" download
-                   class="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-sm transition">
-                    📄 Download as PDF
-                </a>
-            </div>`;
+        html += `
+        <div style="margin-top:14px;">
+            <a href="${API_BASE}/api/export/${data.pdf_export}" download
+               style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#1a1a2e;border:1px solid #22223a;border-radius:6px;font-size:0.8rem;color:#c4c8e0;text-decoration:none;"
+               onmouseenter="this.style.borderColor='#3b82f6'" onmouseleave="this.style.borderColor='#22223a'">
+                📄 Download as PDF
+            </a>
+        </div>`;
     }
 
-    document.getElementById('explanationOutput').innerHTML = explanationHTML;
+    document.getElementById('explanationOutput').innerHTML = html;
     resultsSection.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -211,27 +226,27 @@ function displayVideoResults(data) {
     resultsSection.style.display = 'block';
 
     document.getElementById('agentDecision').innerHTML = `
-        <div class="p-4 rounded border border-zinc-800 bg-zinc-900 flex items-center gap-6 text-sm mono">
-            <span class="text-green-400">✓ VIDEO</span>
-            <span class="text-zinc-500">${data.scenes} scenes</span>
-            <span class="text-zinc-500">${data.duration}s</span>
-            <span class="text-zinc-500">${data.audio_clips} audio tracks</span>
-            <span class="text-purple-400">${(data.detected_language || 'en').toUpperCase()}</span>
+        <div style="padding:14px;border-radius:8px;background:#12121f;border:1px solid #22223a;display:flex;align-items:center;gap:20px;font-size:0.8rem;font-family:monospace;">
+            <span style="color:#4ade80;">✓ VIDEO</span>
+            <span style="color:#6b7099;">${data.scenes} scenes</span>
+            <span style="color:#6b7099;">${data.duration}s</span>
+            <span style="color:#6b7099;">${data.audio_clips} audio tracks</span>
+            <span style="color:#a78bfa;">${(data.detected_language || 'en').toUpperCase()}</span>
         </div>`;
 
     document.getElementById('explanationOutput').innerHTML = `
-        <div class="mt-4 rounded overflow-hidden border border-zinc-800">
-            <video controls class="w-full aspect-video bg-black" autoplay>
+        <div style="margin-top:16px;border-radius:10px;overflow:hidden;border:1px solid #22223a;">
+            <video controls style="width:100%;aspect-ratio:16/9;background:black;" autoplay>
                 <source src="${API_BASE}${data.video_url}" type="video/mp4">
             </video>
         </div>
-        <div class="mt-4 flex gap-3">
+        <div style="margin-top:14px;display:flex;gap:10px;">
             <a href="${API_BASE}${data.video_url}" download
-               class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded text-center transition">
+               style="flex:1;padding:10px;background:#3b82f6;color:white;text-align:center;border-radius:8px;font-weight:600;font-size:0.85rem;text-decoration:none;">
                 Download MP4
             </a>
             <button onclick="location.reload()"
-                    class="px-4 py-2 border border-zinc-700 hover:border-zinc-600 text-sm rounded transition">
+                    style="padding:10px 16px;background:#12121f;border:1px solid #22223a;border-radius:8px;font-size:0.85rem;color:#c4c8e0;cursor:pointer;">
                 New Query
             </button>
         </div>`;
@@ -239,7 +254,7 @@ function displayVideoResults(data) {
     resultsSection.scrollIntoView({ behavior: 'smooth' });
 }
 
-// ─── Query History ────────────────────────────────────────
+// ─── History ──────────────────────────────────────────────
 function addToHistory(query, language, format, type, data) {
     queryHistory.unshift({ query, language, format, type, data, timestamp: Date.now() });
     renderHistory();
@@ -249,17 +264,17 @@ function renderHistory() {
     const container = document.getElementById('historyList');
     const section = document.getElementById('historySection');
     if (!container || queryHistory.length === 0) return;
-
     section.style.display = 'block';
     container.innerHTML = queryHistory.map((item, i) => `
-        <div class="p-3 rounded border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition cursor-pointer"
-             onclick="replayHistory(${i})">
-            <div class="flex items-center justify-between">
-                <p class="text-sm text-white truncate flex-1 mr-4">${item.query}</p>
-                <div class="flex items-center gap-2 shrink-0">
-                    <span class="text-xs mono text-blue-400">${item.format.toUpperCase()}</span>
-                    <span class="text-xs mono text-purple-400">${(item.language || 'en').toUpperCase()}</span>
-                    <span class="text-xs text-zinc-600">${new Date(item.timestamp).toLocaleTimeString()}</span>
+        <div style="padding:12px;border-radius:8px;background:#12121f;border:1px solid #22223a;cursor:pointer;transition:border-color 0.2s;"
+             onclick="replayHistory(${i})"
+             onmouseenter="this.style.borderColor='#3b82f6'" onmouseleave="this.style.borderColor='#22223a'">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <p style="font-size:0.85rem;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:16px;">${item.query}</p>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:monospace;font-size:0.7rem;">
+                    <span style="color:#60a5fa;">${item.format.toUpperCase()}</span>
+                    <span style="color:#a78bfa;">${(item.language || 'en').toUpperCase()}</span>
+                    <span style="color:#444;">${new Date(item.timestamp).toLocaleTimeString()}</span>
                 </div>
             </div>
         </div>`).join('');
@@ -267,25 +282,41 @@ function renderHistory() {
 
 function replayHistory(index) {
     const item = queryHistory[index];
-    if (item.type === 'video') {
-        displayVideoResults(item.data);
-    } else {
-        displayResults(item.data);
-    }
+    if (item.type === 'video') displayVideoResults(item.data);
+    else displayResults(item.data);
     document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
 }
 
-// ─── Utilities ────────────────────────────────────────────
-function showLoading(text) {
+// ─── Loading Overlay ──────────────────────────────────────
+function showLoading(type) {
     document.getElementById('loadingOverlay').classList.remove('hidden');
-    document.getElementById('loadingText').textContent = text;
+    const stepsEl = document.getElementById('loadingSteps');
+    const noteEl = document.getElementById('loadingNote');
+
+    if (type === 'video') {
+        document.getElementById('loadingTitle').textContent = 'Generating Video';
+        document.getElementById('loadingText').textContent = 'This may take 1–3 minutes on free tier';
+        stepsEl.style.display = 'flex';
+        noteEl.textContent = '⏱ Video generation is CPU-intensive — please wait';
+        // reset steps
+        ['step1','step2','step3','step4'].forEach(s => setStep(s, ''));
+    } else {
+        document.getElementById('loadingTitle').textContent = 'Processing';
+        document.getElementById('loadingText').textContent = 'Analyzing your query…';
+        stepsEl.style.display = 'none';
+        noteEl.textContent = '';
+    }
 }
+
 function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
+
 function updateLoadingText(text) {
     document.getElementById('loadingText').textContent = text;
 }
+
+// ─── Utilities ────────────────────────────────────────────
 function askQuestion(question) {
     document.getElementById('queryInput').value = question;
     document.getElementById('queryInput').focus();
@@ -296,18 +327,19 @@ function askQuestion(question) {
 fetch(`${API_BASE}/api/health`)
     .then(r => r.json())
     .then(() => {
-        const badge = document.getElementById('statusBadge');
-        badge.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>Online';
-        badge.className = 'px-2 py-1 rounded text-xs bg-zinc-900 border border-green-900 text-green-400';
+        const b = document.getElementById('statusBadge');
+        b.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:6px;"></span>Online';
+        b.style.borderColor = '#166534';
+        b.style.color = '#4ade80';
     })
     .catch(() => {
-        const badge = document.getElementById('statusBadge');
-        badge.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>Backend Offline';
-        badge.className = 'px-2 py-1 rounded text-xs bg-zinc-900 border border-red-900 text-red-400';
+        const b = document.getElementById('statusBadge');
+        b.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f87171;margin-right:6px;"></span>Offline';
+        b.style.borderColor = '#7f1d1d';
+        b.style.color = '#f87171';
     });
 
-
-// ─── Usage Indicator ──────────────────────────────────────
+// ─── Usage ────────────────────────────────────────────────
 async function fetchUsage() {
     try {
         const res = await fetch(`${API_BASE}/api/usage`);
@@ -315,12 +347,11 @@ async function fetchUsage() {
         const el = document.getElementById('usageIndicator');
         if (!el) return;
         el.innerHTML = `
-            <span class="text-zinc-600">Video</span>
-            <span class="${data.video.remaining === 0 ? 'text-red-400' : 'text-zinc-400'}">${data.video.remaining}/${data.video.limit}</span>
-            <span class="text-zinc-700">•</span>
-            <span class="text-zinc-600">Audio</span>
-            <span class="${data.audio.remaining === 0 ? 'text-red-400' : 'text-zinc-400'}">${data.audio.remaining}/${data.audio.limit}</span>
-        `;
+            <span style="color:#6b7099;">Video</span>
+            <span style="color:${data.video.remaining===0?'#f87171':'#c4c8e0'}">${data.video.remaining}/${data.video.limit}</span>
+            <span style="color:#333;">•</span>
+            <span style="color:#6b7099;">Audio</span>
+            <span style="color:${data.audio.remaining===0?'#f87171':'#c4c8e0'}">${data.audio.remaining}/${data.audio.limit}</span>`;
     } catch(e) {}
 }
 fetchUsage();
