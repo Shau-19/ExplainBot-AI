@@ -5,59 +5,222 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ExplainBot AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'Inter', sans-serif; }
+        :root {
+            --bg: #080810;
+            --surface: #0d0d1a;
+            --surface2: #12121f;
+            --border: #1a1a2e;
+            --border2: #22223a;
+            --accent: #3b82f6;
+            --accent-dim: #0f1f3d;
+            --text: #e2e4f0;
+            --text-dim: #6b7099;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
         .mono { font-family: 'JetBrains Mono', monospace; }
-        body { background: #0a0a0a; color: #e5e5e5; }
-        .tech-border { border: 1px solid #2a2a2a; background: #111; }
-        .tech-border:hover { border-color: #3a3a3a; }
+
+        /* ── LAUNCH SCREEN ─────────────────────── */
+        #launchScreen {
+            position: fixed; inset: 0; background: var(--bg); z-index: 9000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        #launchScreen.hiding { opacity: 0; transform: scale(1.04); pointer-events: none; }
+
+        .ls-grid {
+            position: absolute; inset: 0;
+            background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 60px 60px; opacity: 0.5;
+        }
+        .ls-glow {
+            position: absolute; width: 600px; height: 600px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            animation: glowpulse 3s ease-in-out infinite;
+        }
+        @keyframes glowpulse {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+        }
+        .ls-inner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+        .ls-icon {
+            width: 56px; height: 56px; border: 2px solid var(--accent);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            animation: iconpulse 2s ease-in-out infinite;
+        }
+        .ls-icon svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        @keyframes iconpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); } 50% { box-shadow: 0 0 0 14px rgba(59,130,246,0); } }
+
+        .ls-title { font-size: 3rem; font-weight: 800; letter-spacing: -0.02em; }
+        .ls-title em { color: var(--accent); font-style: normal; }
+        .ls-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.14em; }
+
+        .ls-boot {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; width: 380px;
+            background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
+            padding: 14px 16px; min-height: 120px;
+        }
+        .boot-line { opacity: 0; animation: bfade 0.3s ease forwards; padding: 3px 0; }
+        .boot-line.ok   { color: #4ade80; }
+        .boot-line.info { color: var(--accent); }
+        .boot-line.warn { color: #fbbf24; }
+        .boot-line.sys  { color: var(--text-dim); }
+        @keyframes bfade { to { opacity: 1; } }
+
+        .ls-stack { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; }
+        .ls-tag { padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border2); color: var(--text-dim); }
+        .ls-tag.blue   { border-color: #1d4ed8; color: #60a5fa; background: rgba(59,130,246,0.06); }
+        .ls-tag.purple { border-color: #6d28d9; color: #a78bfa; background: rgba(139,92,246,0.06); }
+        .ls-tag.green  { border-color: #166534; color: #4ade80; background: rgba(74,222,128,0.06); }
+        .ls-tag.yellow { border-color: #92400e; color: #fbbf24; background: rgba(251,191,36,0.06); }
+        .ls-tag.pink   { border-color: #9d174d; color: #f472b6; background: rgba(244,114,182,0.06); }
+
+        .ls-btn {
+            padding: 13px 48px; background: var(--accent-dim); border: 1px solid var(--accent);
+            color: var(--accent); border-radius: 6px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem; font-weight: 600; cursor: pointer; letter-spacing: 0.08em;
+            transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .ls-btn::before { content: ''; position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease; }
+        .ls-btn:hover:not(:disabled)::before { transform: scaleX(1); }
+        .ls-btn:hover:not(:disabled) { color: var(--bg); }
+        .ls-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .ls-btn span { position: relative; z-index: 1; }
+        .ls-ver { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--text-dim); letter-spacing: 0.06em; }
+
+        /* ── MAIN APP ─────────────────────────── */
+        #mainApp { opacity: 0; transition: opacity 0.5s ease 0.1s; }
+        #mainApp.visible { opacity: 1; }
+
+        .tech-border { border: 1px solid var(--border2); background: var(--surface); }
+
+        /* ── LOADING OVERLAY ──────────────────── */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: rgba(8,8,16,0.93);
+            display: flex; align-items: center; justify-content: center; z-index: 500;
+            backdrop-filter: blur(4px);
+        }
+        #loadingOverlay.hidden { display: none; }
+        .loading-box {
+            background: var(--surface2); border: 1px solid var(--border2);
+            border-radius: 16px; padding: 40px 52px; text-align: center; min-width: 340px;
+        }
+        .loading-spinner {
+            width: 44px; height: 44px; border: 2px solid var(--border2);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.9s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+        .loading-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-dim); }
+
+        .loading-steps { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+        .loading-step {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.64rem; color: var(--text-dim);
+            padding: 6px 12px; border-radius: 5px; background: var(--bg); border: 1px solid var(--border);
+            opacity: 0.4; transition: opacity 0.4s, color 0.4s, border-color 0.4s;
+        }
+        .loading-step.active { opacity: 1; color: var(--accent); border-color: var(--accent-dim); }
+        .loading-step.done   { opacity: 0.7; color: #4ade80; border-color: #14532d; }
+        .loading-note { margin-top: 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #555; }
     </style>
 </head>
-<body class="min-h-screen">
+<body>
 
-    <header class="border-b border-zinc-800 bg-black sticky top-0 z-50">
+<!-- ══ LAUNCH SCREEN ════════════════════════════ -->
+<div id="launchScreen">
+    <div class="ls-grid"></div>
+    <div class="ls-glow"></div>
+    <div class="ls-inner">
+        <div class="ls-icon">
+            <svg viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+            </svg>
+        </div>
+        <div class="ls-title">Explain<em>Bot</em> <span style="font-size:1rem;color:var(--text-dim);font-weight:400;">AI</span></div>
+        <div class="ls-sub">AGENTIC DOCUMENT INTELLIGENCE</div>
+        <div class="ls-boot" id="lsBoot"></div>
+        <div class="ls-stack">
+            <span class="ls-tag blue">Groq LLM</span>
+            <span class="ls-tag purple">ElevenLabs TTS</span>
+            <span class="ls-tag green">OpenAI TTS</span>
+            <span class="ls-tag yellow">MoviePy</span>
+            <span class="ls-tag pink">FastAPI</span>
+        </div>
+        <button class="ls-btn" id="lsBtn" onclick="startApp()" disabled>
+            <span id="lsBtnTxt">INITIALIZING…</span>
+        </button>
+        <div class="ls-ver">v1.0 &nbsp;·&nbsp; Multi-agent · Multi-modal · Multi-language</div>
+    </div>
+</div>
+
+<!-- ══ MAIN APP ══════════════════════════════════ -->
+<div id="mainApp">
+
+    <header class="border-b sticky top-0 z-50" style="border-color:var(--border);background:rgba(8,8,16,0.95);backdrop-filter:blur(10px);">
         <div class="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-6 h-6 bg-blue-600 rounded"></div>
-                <span class="text-lg font-semibold mono">ExplainBot</span>
-                <span class="text-xs text-zinc-600 ml-2">v1.0</span>
+                <div class="w-6 h-6 rounded" style="background:var(--accent);"></div>
+                <span class="text-lg font-bold">ExplainBot</span>
+                <span class="text-xs mono" style="color:var(--text-dim);">v1.0</span>
             </div>
-            <div class="flex items-center gap-4 text-sm">
-                <a href="#demo" class="text-zinc-400 hover:text-white transition">Demo</a>
-                <a href="#architecture" class="text-zinc-400 hover:text-white transition">How It Works</a>
-                <a href="https://github.com/your-repo" class="text-zinc-400 hover:text-white transition">GitHub</a>
-                <div id="statusBadge" class="px-2 py-1 rounded text-xs bg-zinc-900 border border-zinc-800">
-                    <span class="inline-block w-2 h-2 rounded-full bg-zinc-600 mr-1"></span>Connecting...
+            <div class="flex items-center gap-5 text-sm mono">
+                <a href="#demo" style="color:var(--text-dim);" class="hover:text-white transition">Demo</a>
+                <a href="#architecture" style="color:var(--text-dim);" class="hover:text-white transition">How It Works</a>
+                <a href="https://github.com/Shau-19/ExplainBot-AI" target="_blank" style="color:var(--text-dim);" class="hover:text-white transition">GitHub</a>
+                <div id="statusBadge" class="px-2 py-1 rounded text-xs mono" style="background:var(--surface2);border:1px solid var(--border2);">
+                    <span class="inline-block w-2 h-2 rounded-full mr-1" style="background:#444;"></span>Connecting...
                 </div>
             </div>
         </div>
     </header>
 
-    <section class="border-b border-zinc-800 bg-gradient-to-b from-black to-zinc-950">
-        <div class="max-w-6xl mx-auto px-6 py-16">
+    <!-- Hero -->
+    <section class="border-b" style="border-color:var(--border);background:linear-gradient(to bottom,#08080f,var(--bg));">
+        <div class="max-w-6xl mx-auto px-6 py-20">
             <div class="max-w-3xl">
-                <h1 class="text-4xl font-bold mb-4">Document Intelligence Platform</h1>
-                <p class="text-xl text-zinc-400 mb-6">Upload complex PDFs and get AI-generated explanations in text, audio, or video. Multi-document support, auto language detection, scene-by-scene A/V sync.</p>
-                <div class="tech-border rounded-lg p-4 mb-6 mono text-sm">
-                    <div class="text-zinc-600 text-xs mb-2">TECH STACK</div>
+                <div class="mono text-xs mb-4" style="color:var(--accent);">// DOCUMENT INTELLIGENCE PLATFORM</div>
+                <h1 class="text-5xl font-extrabold mb-5 leading-tight" style="letter-spacing:-0.02em;">
+                    Upload. Ask.<br><span style="color:var(--accent);">Understand.</span>
+                </h1>
+                <p class="text-lg mb-8" style="color:var(--text-dim);line-height:1.7;">
+                    Upload complex PDFs and get AI-generated explanations in text, audio, or fully synchronized video — with scene-by-scene narration, auto language detection, and multi-document support.
+                </p>
+                <div class="rounded-xl p-5 mb-8 mono text-sm" style="background:var(--surface);border:1px solid var(--border2);">
+                    <div class="text-xs mb-3" style="color:var(--text-dim);">STACK</div>
                     <div class="flex flex-wrap gap-3">
-                        <span class="text-blue-400">Groq LLM</span>
-                        <span class="text-zinc-700">•</span>
-                        <span class="text-purple-400">ElevenLabs TTS</span>
-                        <span class="text-zinc-700">•</span>
-                        <span class="text-green-400">MoviePy</span>
-                        <span class="text-zinc-700">•</span>
-                        <span class="text-yellow-400">FastAPI</span>
-                        <span class="text-zinc-700">•</span>
-                        <span class="text-pink-400">ReportLab</span>
+                        <span style="color:#60a5fa;">Groq LLM</span>
+                        <span style="color:var(--border2);">·</span>
+                        <span style="color:#a78bfa;">ElevenLabs TTS</span>
+                        <span style="color:var(--border2);">·</span>
+                        <span style="color:#4ade80;">OpenAI TTS</span>
+                        <span style="color:var(--border2);">·</span>
+                        <span style="color:#fbbf24;">MoviePy</span>
+                        <span style="color:var(--border2);">·</span>
+                        <span style="color:#f472b6;">FastAPI</span>
+                        <span style="color:var(--border2);">·</span>
+                        <span style="color:#34d399;">ReportLab</span>
                     </div>
-                    <div class="text-zinc-500 text-xs mt-2">↳ Multi-doc • Auto language detect • PDF export • Query history</div>
+                    <div class="text-xs mt-2" style="color:var(--text-dim);">↳ Multi-doc · Auto language detect · PDF export · Query history · Rate limiting</div>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="document.getElementById('uploadArea').scrollIntoView({behavior:'smooth'})"
-                            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded font-medium transition">Try It Now →</button>
-                    <a href="#architecture" class="px-6 py-3 tech-border rounded font-medium hover:border-zinc-700 transition">Architecture</a>
+                            class="px-6 py-3 rounded-lg font-semibold transition" style="background:var(--accent);color:white;">
+                        Try It Now →
+                    </button>
+                    <a href="#architecture" class="px-6 py-3 rounded-lg font-medium transition"
+                       style="background:var(--surface);border:1px solid var(--border2);color:var(--text-dim);">
+                        Architecture
+                    </a>
                 </div>
             </div>
         </div>
@@ -65,45 +228,49 @@
 
     <main class="max-w-6xl mx-auto px-6 py-12" id="demo">
 
-        <!-- Step 1: Upload -->
+        <!-- Step 1 -->
         <section class="mb-12" id="uploadArea">
-            <div class="tech-border rounded-lg p-8">
+            <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-500 mono text-sm">1</div>
-                    <h2 class="text-xl font-semibold">Upload Documents</h2>
-                    <span class="text-xs text-zinc-600 mono">Multiple files supported</span>
+                    <div class="w-8 h-8 rounded flex items-center justify-center mono text-sm" style="background:var(--surface2);color:var(--text-dim);">1</div>
+                    <h2 class="text-xl font-bold">Upload Documents</h2>
+                    <span class="text-xs mono" style="color:var(--text-dim);">Multiple files supported</span>
                 </div>
-                <div class="border-2 border-dashed border-zinc-800 rounded-lg p-12 text-center hover:border-zinc-700 transition cursor-pointer">
+                <div class="border-2 border-dashed rounded-xl p-12 text-center transition cursor-pointer" style="border-color:var(--border2);"
+                     onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border2)'">
                     <input type="file" id="fileInput" accept=".pdf,.txt" class="hidden">
                     <label for="fileInput" class="cursor-pointer">
                         <div class="text-4xl mb-3">📄</div>
-                        <p class="text-zinc-400">Click or drop PDF/TXT files</p>
-                        <p class="text-xs text-zinc-600 mt-1">Upload multiple documents — queries run across all of them</p>
+                        <p style="color:var(--text-dim);">Click or drop PDF/TXT files</p>
+                        <p class="text-xs mono mt-1" style="color:#444;">Upload multiple documents — queries run across all of them</p>
                     </label>
                 </div>
                 <div id="uploadStatus" class="mt-4 hidden"></div>
             </div>
         </section>
 
-        <!-- Step 2: Query -->
+        <!-- Step 2 -->
         <section id="querySection" class="mb-12" style="display:none;">
-            <div class="tech-border rounded-lg p-8">
+            <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-500 mono text-sm">2</div>
-                    <h2 class="text-xl font-semibold">Configure Query</h2>
+                    <div class="w-8 h-8 rounded flex items-center justify-center mono text-sm" style="background:var(--surface2);color:var(--text-dim);">2</div>
+                    <h2 class="text-xl font-bold">Configure Query</h2>
                 </div>
                 <form id="queryForm">
                     <div class="grid gap-4">
                         <div>
-                            <label class="block text-sm text-zinc-500 mb-2 mono">QUERY</label>
+                            <label class="block text-sm mono mb-2" style="color:var(--text-dim);">QUERY</label>
                             <input type="text" id="queryInput" required
-                                   class="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded focus:border-blue-600 focus:outline-none transition"
-                                   placeholder="Explain the authentication workflow">
+                                   class="w-full px-4 py-3 rounded-lg transition outline-none mono text-sm"
+                                   style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);"
+                                   onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
+                                   placeholder="Walk me through the complete transaction flow">
                         </div>
                         <div class="grid grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm text-zinc-500 mb-2 mono">LANGUAGE</label>
-                                <select id="languageSelect" class="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded focus:border-blue-600 focus:outline-none">
+                                <label class="block text-sm mono mb-2" style="color:var(--text-dim);">LANGUAGE</label>
+                                <select id="languageSelect" class="w-full px-4 py-3 rounded-lg mono text-sm outline-none"
+                                        style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);">
                                     <option value="auto">Auto-detect</option>
                                     <option value="en">English</option>
                                     <option value="hi">Hindi</option>
@@ -113,8 +280,9 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm text-zinc-500 mb-2 mono">FORMAT</label>
-                                <select id="formatHint" class="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded focus:border-blue-600 focus:outline-none">
+                                <label class="block text-sm mono mb-2" style="color:var(--text-dim);">FORMAT</label>
+                                <select id="formatHint" class="w-full px-4 py-3 rounded-lg mono text-sm outline-none"
+                                        style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);">
                                     <option value="auto">Auto</option>
                                     <option value="video">Video</option>
                                     <option value="audio">Audio</option>
@@ -122,91 +290,151 @@
                                 </select>
                             </div>
                             <div class="flex items-end">
-                                <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded font-medium transition">Generate →</button>
+                                <button type="submit" class="w-full py-3 rounded-lg font-semibold transition"
+                                        style="background:var(--accent);color:white;">Generate →</button>
                             </div>
                         </div>
                     </div>
                 </form>
-                <div class="mt-3 flex items-center gap-2 text-xs mono text-zinc-600" id="usageIndicator">
-                    Loading usage...
-                </div>
+                <div class="mt-3 flex items-center gap-2 text-xs mono" id="usageIndicator" style="color:var(--text-dim);">Loading usage...</div>
                 <div class="mt-4 flex gap-2 text-xs">
-                    <button onclick="askQuestion('Summarize')" class="px-3 py-1 tech-border rounded hover:border-zinc-700 transition">Summarize</button>
-                    <button onclick="askQuestion('Explain workflow')" class="px-3 py-1 tech-border rounded hover:border-zinc-700 transition">Workflow</button>
-                    <button onclick="askQuestion('Key components')" class="px-3 py-1 tech-border rounded hover:border-zinc-700 transition">Components</button>
+                    <button onclick="askQuestion('Summarize')" class="px-3 py-1 rounded transition mono" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text-dim);">Summarize</button>
+                    <button onclick="askQuestion('Explain workflow')" class="px-3 py-1 rounded transition mono" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text-dim);">Workflow</button>
+                    <button onclick="askQuestion('Key components')" class="px-3 py-1 rounded transition mono" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text-dim);">Components</button>
                 </div>
             </div>
         </section>
 
-        <!-- Step 3: Output -->
+        <!-- Step 3 -->
         <section id="resultsSection" class="mb-12" style="display:none;">
-            <div class="tech-border rounded-lg p-8">
+            <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-500 mono text-sm">3</div>
-                    <h2 class="text-xl font-semibold">Output</h2>
+                    <div class="w-8 h-8 rounded flex items-center justify-center mono text-sm" style="background:var(--surface2);color:var(--text-dim);">3</div>
+                    <h2 class="text-xl font-bold">Output</h2>
                 </div>
                 <div id="agentDecision" class="mb-6"></div>
                 <div id="explanationOutput"></div>
             </div>
         </section>
 
-        <!-- Query History -->
+        <!-- History -->
         <section id="historySection" class="mb-12" style="display:none;">
-            <div class="tech-border rounded-lg p-8">
+            <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-500 mono text-sm">↺</div>
-                    <h2 class="text-xl font-semibold">Query History</h2>
-                    <span class="text-xs text-zinc-600 mono">Click any query to restore output</span>
+                    <div class="w-8 h-8 rounded flex items-center justify-center mono text-sm" style="background:var(--surface2);color:var(--text-dim);">↺</div>
+                    <h2 class="text-xl font-bold">Query History</h2>
+                    <span class="text-xs mono" style="color:var(--text-dim);">Click any query to restore output</span>
                 </div>
                 <div id="historyList" class="flex flex-col gap-2"></div>
             </div>
         </section>
-
     </main>
 
-    <section id="architecture" class="border-t border-zinc-800 bg-zinc-950">
+    <!-- Architecture -->
+    <section id="architecture" class="border-t" style="border-color:var(--border);background:var(--surface);">
         <div class="max-w-6xl mx-auto px-6 py-16">
             <h2 class="text-2xl font-bold mb-8">How It Works</h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mono text-sm">
-                <div class="tech-border rounded-lg p-6">
-                    <div class="text-blue-400 mb-2">1. DECISION</div>
-                    <p class="text-zinc-500">Agent analyzes query and chooses format (text/audio/video)</p>
+                <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
+                    <div class="mb-2" style="color:#60a5fa;">1. DECISION</div>
+                    <p style="color:var(--text-dim);">Agent analyzes query and chooses format — text, audio, or video</p>
                 </div>
-                <div class="tech-border rounded-lg p-6">
-                    <div class="text-purple-400 mb-2">2. PLANNING</div>
-                    <p class="text-zinc-500">Video agent creates scene-by-scene narration scripts</p>
+                <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
+                    <div class="mb-2" style="color:#a78bfa;">2. PLANNING</div>
+                    <p style="color:var(--text-dim);">Video agent creates 4-scene script with per-scene narration</p>
                 </div>
-                <div class="tech-border rounded-lg p-6">
-                    <div class="text-green-400 mb-2">3. GENERATION</div>
-                    <p class="text-zinc-500">TTS creates audio per scene in detected language</p>
+                <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
+                    <div class="mb-2" style="color:#4ade80;">3. GENERATION</div>
+                    <p style="color:var(--text-dim);">ElevenLabs or OpenAI TTS creates audio per scene in detected language</p>
                 </div>
-                <div class="tech-border rounded-lg p-6">
-                    <div class="text-yellow-400 mb-2">4. COMPOSITION</div>
-                    <p class="text-zinc-500">MoviePy composes scenes with perfect A/V sync</p>
+                <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
+                    <div class="mb-2" style="color:#fbbf24;">4. COMPOSITION</div>
+                    <p style="color:var(--text-dim);">MoviePy composes scenes using real audio durations for perfect A/V sync</p>
                 </div>
             </div>
-            <div class="mt-8 tech-border rounded-lg p-6">
-                <div class="text-xs text-zinc-600 mb-2 mono">KEY INNOVATION</div>
-                <p class="text-zinc-400"><strong class="text-white">Scene-by-Scene Narration:</strong> Unlike traditional video generators, we generate separate audio for each scene ensuring what you see always matches what you hear.</p>
+            <div class="mt-8 rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
+                <div class="text-xs mono mb-2" style="color:var(--text-dim);">KEY INNOVATION</div>
+                <p style="color:var(--text-dim);"><strong class="text-white">Scene-by-Scene A/V Sync:</strong> Each scene gets its own narration script and audio clip. Duration is read from the actual audio file — not estimated. What you see always matches what you hear.</p>
             </div>
         </div>
     </section>
 
-    <footer class="border-t border-zinc-800 py-8 text-center text-sm text-zinc-600">
-        <p>Open Source • Privacy-First • No Data Retention</p>
+    <footer class="border-t py-8 text-center text-sm mono" style="border-color:var(--border);color:var(--text-dim);">
+        <p>Open Source · Multi-agent · Multi-modal · Multi-language</p>
         <div class="flex justify-center gap-6 mt-3">
-            <a href="#" class="hover:text-zinc-400 transition">GitHub</a>
-            <a href="#" class="hover:text-zinc-400 transition">API Docs</a>
+            <a href="https://github.com/Shau-19/ExplainBot-AI" target="_blank" class="hover:text-white transition">GitHub</a>
+            <a href="/docs" class="hover:text-white transition">API Docs</a>
         </div>
     </footer>
 
-    <div id="loadingOverlay" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 hidden">
-        <div class="text-center">
-            <div class="w-12 h-12 border-2 border-zinc-800 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-            <p class="text-zinc-400 mono text-sm" id="loadingText">Processing...</p>
-        </div>
-    </div>
+</div>
 
-    <script src="app.js"></script>
+<!-- ══ LOADING OVERLAY ══════════════════════════ -->
+<div id="loadingOverlay" class="hidden">
+    <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div class="loading-title" id="loadingTitle">Processing...</div>
+        <div class="loading-sub" id="loadingText">Analyzing your query</div>
+        <div class="loading-steps" id="loadingSteps" style="display:none;">
+            <div class="loading-step" id="step1">① Planning scenes</div>
+            <div class="loading-step" id="step2">② Rendering diagram</div>
+            <div class="loading-step" id="step3">③ Generating narration</div>
+            <div class="loading-step" id="step4">④ Composing video</div>
+        </div>
+        <div class="loading-note" id="loadingNote"></div>
+    </div>
+</div>
+
+<script>
+/* ── LAUNCH SCREEN ──────────────────────────────── */
+const BOOT = [
+    { t: 'sys',  m: '[ ExplainBot ] initializing agents…' },
+    { t: 'ok',   m: '✓ decision agent loaded' },
+    { t: 'ok',   m: '✓ content agent loaded' },
+    { t: 'ok',   m: '✓ video agent loaded' },
+    { t: 'ok',   m: '✓ hybrid TTS ready (ElevenLabs + OpenAI)' },
+    { t: 'info', m: '→ connecting to backend…' },
+];
+
+async function runBoot() {
+    const c = document.getElementById('lsBoot');
+    for (let i = 0; i < BOOT.length; i++) {
+        await sleep(300 + i * 130);
+        const d = document.createElement('div');
+        d.className = 'boot-line ' + BOOT[i].t;
+        d.textContent = BOOT[i].m;
+        c.appendChild(d);
+    }
+    await sleep(400);
+    try {
+        await fetch('/api/health');
+        const d = document.createElement('div');
+        d.className = 'boot-line ok';
+        d.textContent = '✓ backend online — ready';
+        c.appendChild(d);
+    } catch {
+        const d = document.createElement('div');
+        d.className = 'boot-line warn';
+        d.textContent = '⚠ backend offline — check server';
+        c.appendChild(d);
+    }
+    await sleep(300);
+    document.getElementById('lsBtn').disabled = false;
+    document.getElementById('lsBtnTxt').textContent = '▷ LAUNCH APP';
+}
+
+function startApp() {
+    const ls = document.getElementById('launchScreen');
+    ls.classList.add('hiding');
+    setTimeout(() => {
+        ls.style.display = 'none';
+        document.getElementById('mainApp').classList.add('visible');
+    }, 700);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+window.addEventListener('load', runBoot);
+</script>
+<script src="app.js"></script>
 </body>
 </html>
