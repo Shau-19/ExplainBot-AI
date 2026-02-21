@@ -1,4 +1,4 @@
-# ExplainBot AI
+[# ExplainBot AI](https://explainbot-ai-v1.onrender.com)
 
 > An agentic document intelligence system that converts technical documents into text, audio, or synchronized video explanations — using a custom-built multi-agent pipeline, not a single API call.
 ---
@@ -6,6 +6,7 @@
 ## 🎥 Live Demo
 
 [▶️ Click here to watch the full demo](assets/video_1771598634.mp4)
+
 
 
 ExplainBot dynamically selects the best explanation format based on query intent — text, narrated audio, or fully synchronized explainer video with rendered architecture diagrams.
