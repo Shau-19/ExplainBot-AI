@@ -1,4 +1,4 @@
-#[ ExplainBot AI](https://explainbot-ai-v1.onrender.com)
+#ExplainBot AI
 
 > An agentic document intelligence system that converts technical documents into text, audio, or synchronized video explanations — using a custom-built multi-agent pipeline, not a single API call.
 ---
