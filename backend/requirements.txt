@@ -43,3 +43,4 @@ uv==0.10.2
 uvicorn==0.41.0
 watchfiles==1.1.1
 websockets==16.0
+rank-bm25
