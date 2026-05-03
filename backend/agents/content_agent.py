@@ -35,12 +35,13 @@ class ContentAgent:
 
         if format_type in ['audio', 'video']:
             system_msg = (
-                f"You write natural narration scripts for audio explanations. "
-                f"Use conversational language and short sentences. No bullet points. "
-                f"Answer STRICTLY from the provided context — never use outside knowledge. "
-                f"If the answer is not in the context, say exactly: "
-                f"'This information is not in the uploaded document.' "
-                f"Always respond in {lang_name}."
+                "Answer from the provided context if the answer is there. "
+                "If not found in context but the question is related to the topic, "
+                "answer from general knowledge but prefix with: "
+                "'Not in your document, but generally: ' "
+                "If completely unrelated to the document topic, say: "
+                "'Please ask something relevant to your uploaded document.' "
+                "Never answer off-topic requests like jokes, code generation, or opinions."
             )
             format_instruction = (
                 f"Write as a spoken narration script in {lang_name}. "
@@ -48,11 +49,13 @@ class ContentAgent:
             )
         else:
             system_msg = (
-                f"You are a helpful technical explainer. Be clear and concise. "
-                f"Answer STRICTLY from the provided context — never use outside knowledge. "
-                f"If the answer is not in the context, say exactly: "
-                f"'This information is not in the uploaded document.' "
-                f"Always respond in {lang_name}."
+                "Answer from the provided context if the answer is there. "
+                "If not found in context but the question is related to the topic, "
+                "answer from general knowledge but prefix with: "
+                "'Not in your document, but generally: ' "
+                "If completely unrelated to the document topic, say: "
+                "'Please ask something relevant to your uploaded document.' "
+                "Never answer off-topic requests like jokes, code generation, or opinions."
             )
             format_instruction = f"Write a clear technical explanation in {lang_name}."
 
