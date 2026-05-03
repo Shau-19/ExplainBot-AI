@@ -1,5 +1,4 @@
-
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,18 +19,25 @@ from agents.video_agent import VideoAgent
 from services.tts_service import HybridTTSService
 from services.diagram_service import DiagramService
 from services.video_service import VideoService
+from guardrails import (
+    validate_query,
+    validate_context,
+    validate_upload_size,
+    check_ip_rate,
+    MAX_UPLOAD_BYTES
+)
 
 load_dotenv()
 
-# ── Rate Limiting ─────────────────────────────────────────
+# ── Daily rate limits (video/audio are expensive) ────────────────────────────
+
 from datetime import datetime
 
 LIMITS = {"video": 5, "audio": 5}
-
 usage = {"video": 0, "audio": 0, "reset_date": datetime.now().date().isoformat()}
 
+
 def check_and_increment(type_: str) -> tuple[bool, int]:
-    """Returns (allowed, remaining). Resets daily."""
     today = datetime.now().date().isoformat()
     if usage["reset_date"] != today:
         usage["video"] = 0
@@ -44,7 +50,9 @@ def check_and_increment(type_: str) -> tuple[bool, int]:
     return True, limit - usage[type_]
 
 
-app = FastAPI(title="ExplainBot AI", version="1.0.0")
+# ── App ───────────────────────────────────────────────────────────────────────
+
+app = FastAPI(title="ExplainBot AI", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,20 +62,22 @@ app.add_middleware(
 )
 
 decision_agent = DecisionAgent()
-content_agent = ContentAgent()
-video_agent = VideoAgent()
-tts_service = HybridTTSService()
+content_agent  = ContentAgent()
+video_agent    = VideoAgent()
+tts_service    = HybridTTSService()
 diagram_service = DiagramService()
-video_service = VideoService()
+video_service  = VideoService()
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-# ── Multi-document store ─────────────────────────────────
-documents = {}          # {filename: text}
-current_content = ""    # combined text of all uploaded docs
+# ── Multi-document store ──────────────────────────────────────────────────────
+
+documents: dict[str, str] = {}
+current_content: str = ""
 
 SUPPORTED_LANGUAGES = {"en", "hi", "es", "de", "fr", "pt", "it", "pl", "nl"}
+
 
 def detect_language(text: str) -> str:
     try:
@@ -76,13 +86,14 @@ def detect_language(text: str) -> str:
     except LangDetectException:
         return "en"
 
+
 def combine_documents() -> str:
     return "\n\n---\n\n".join(
         f"[Document: {name}]\n{text}" for name, text in documents.items()
     )
 
+
 def generate_pdf_export(query: str, explanation_text: str, language: str) -> str:
-    """Generate a styled PDF from explanation text using reportlab."""
     output_dir = Path("outputs/exports")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -92,47 +103,31 @@ def generate_pdf_export(query: str, explanation_text: str, language: str) -> str
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=letter,
-        rightMargin=inch,
-        leftMargin=inch,
-        topMargin=inch,
-        bottomMargin=inch
+        rightMargin=inch, leftMargin=inch,
+        topMargin=inch, bottomMargin=inch
     )
-
     styles = getSampleStyleSheet()
-
     title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Title'],
-        fontSize=18,
-        textColor=colors.HexColor('#1e3a8a'),
-        spaceAfter=12
+        'CustomTitle', parent=styles['Title'],
+        fontSize=18, textColor=colors.HexColor('#1e3a8a'), spaceAfter=12
     )
-
     meta_style = ParagraphStyle(
-        'Meta',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.HexColor('#94a3b8'),
-        spaceAfter=20
+        'Meta', parent=styles['Normal'],
+        fontSize=9, textColor=colors.HexColor('#94a3b8'), spaceAfter=20
     )
-
     body_style = ParagraphStyle(
-        'Body',
-        parent=styles['Normal'],
-        fontSize=11,
-        leading=18,
-        spaceAfter=8
+        'Body', parent=styles['Normal'],
+        fontSize=11, leading=18, spaceAfter=8
     )
 
-    # Strip markdown — reportlab doesn't render it
     clean_text = re.sub(r'\*\*(.*?)\*\*', r'\1', explanation_text)
     clean_text = re.sub(r'\*(.*?)\*', r'\1', clean_text)
 
-    story = []
-    story.append(Paragraph("ExplainBot AI", title_style))
-    story.append(Paragraph(f"Query: {query} &nbsp;|&nbsp; Language: {language.upper()}", meta_style))
-    story.append(Spacer(1, 0.2 * inch))
-
+    story = [
+        Paragraph("ExplainBot AI", title_style),
+        Paragraph(f"Query: {query} &nbsp;|&nbsp; Language: {language.upper()}", meta_style),
+        Spacer(1, 0.2 * inch),
+    ]
     for para in clean_text.split('\n\n'):
         para = para.strip()
         if para:
@@ -143,7 +138,16 @@ def generate_pdf_export(query: str, explanation_text: str, language: str) -> str
     return str(output_path)
 
 
-# ── Health ───────────────────────────────────────────────
+# ── Helper: get real client IP ────────────────────────────────────────────────
+
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/health")
 def health_check():
@@ -157,39 +161,65 @@ def health_check():
     }
 
 
-# ── Upload (multi-doc) ───────────────────────────────────
+# ── Upload ────────────────────────────────────────────────────────────────────
 
 @app.post("/api/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(request: Request, file: UploadFile = File(...)):
     global current_content
 
+    # IP rate limit
+    ip = get_client_ip(request)
+    allowed, reason = check_ip_rate(ip)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
+
+    # File type guard
     if not (file.filename.endswith('.pdf') or file.filename.endswith('.txt')):
         raise HTTPException(status_code=400, detail="Only PDF and TXT files accepted.")
 
-    file_path = UPLOAD_DIR / file.filename
+    # File size guard — read into memory first to check size
+    contents = await file.read()
+    size_ok, size_msg = validate_upload_size(len(contents))
+    if not size_ok:
+        raise HTTPException(status_code=413, detail=size_msg)
+
+    # Sanitise filename — no path traversal
+    safe_name = Path(file.filename).name
+    file_path = UPLOAD_DIR / safe_name
+
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(contents)
 
     try:
-        if file.filename.endswith('.pdf'):
+        if safe_name.endswith('.pdf'):
             reader = PdfReader(file_path)
-            text = "\n".join([page.extract_text() for page in reader.pages])
+            text = "\n".join(
+                page.extract_text() or "" for page in reader.pages
+            )
         else:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                text = f.read()
+            text = contents.decode("utf-8", errors="ignore")
 
-        documents[file.filename] = text
+        # Context sanity check
+        ctx_ok, ctx_msg = validate_context(text)
+        if not ctx_ok:
+            raise HTTPException(status_code=422, detail=ctx_msg)
+        if ctx_msg:
+            print(f"[Upload] {ctx_msg}")
+
+        documents[safe_name] = text
         current_content = combine_documents()
 
         return {
             "success": True,
-            "filename": file.filename,
+            "filename": safe_name,
             "content_length": len(text),
             "total_documents": len(documents),
             "document_names": list(documents.keys()),
             "preview": text[:200] + "..." if len(text) > 200 else text
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
 
@@ -197,8 +227,9 @@ async def upload_document(file: UploadFile = File(...)):
 @app.delete("/api/document/{filename}")
 async def remove_document(filename: str):
     global current_content
-    if filename in documents:
-        del documents[filename]
+    safe_name = Path(filename).name   # prevent path traversal
+    if safe_name in documents:
+        del documents[safe_name]
         current_content = combine_documents()
         return {"success": True, "remaining": list(documents.keys())}
     raise HTTPException(status_code=404, detail="Document not found")
@@ -207,9 +238,7 @@ async def remove_document(filename: str):
 @app.get("/api/documents")
 def list_documents():
     return {
-        "documents": [
-            {"name": k, "length": len(v)} for k, v in documents.items()
-        ],
+        "documents": [{"name": k, "length": len(v)} for k, v in documents.items()],
         "total": len(documents)
     }
 
@@ -225,27 +254,47 @@ def document_status():
     }
 
 
-# ── Explain ──────────────────────────────────────────────
+# ── Explain ───────────────────────────────────────────────────────────────────
 
 @app.post("/api/explain")
 async def generate_explanation(
+    request: Request,
     query: str = Form(...),
     language: str = Form("auto"),
     generate_audio: bool = Form(True),
     format_hint: str = Form("auto")
 ):
+    # IP rate limit
+    ip = get_client_ip(request)
+    allowed, reason = check_ip_rate(ip)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
+
+    # Query guardrail — before ANY LLM call
+    q_ok, q_msg = validate_query(query)
+    if not q_ok:
+        raise HTTPException(status_code=400, detail=q_msg)
+
     if not current_content:
         raise HTTPException(status_code=400, detail="No document uploaded.")
 
     try:
-        effective_language = language if language != "auto" else detect_language(query)
-        decision = decision_agent.analyze_and_decide(query, current_content, format_hint)
+        effective_language = (
+            language if language != "auto" else detect_language(query)
+        )
+        decision = decision_agent.analyze_and_decide(
+            query, current_content, format_hint
+        )
 
         # Rate limit audio
-        if decision["format"] == "audio" or (generate_audio and decision["format"] in ["audio"]):
-            allowed, remaining = check_and_increment("audio")
-            if not allowed:
-                raise HTTPException(status_code=429, detail=f"Audio limit reached ({LIMITS['audio']}/day). Try text format or come back tomorrow.")
+        if decision["format"] in ["audio"] and generate_audio:
+            a_ok, _ = check_and_increment("audio")
+            if not a_ok:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Audio limit reached ({LIMITS['audio']}/day). "
+                           f"Try text format or come back tomorrow."
+                )
 
         explanation = content_agent.generate_explanation(
             query=query,
@@ -257,9 +306,10 @@ async def generate_explanation(
         audio_result = None
         if generate_audio and decision['format'] in ['audio', 'video']:
             script = explanation['script'] or explanation['text']
-            audio_result = tts_service.generate_audio(text=script, language=effective_language)
+            audio_result = tts_service.generate_audio(
+                text=script, language=effective_language
+            )
 
-        # Generate PDF export
         pdf_path = generate_pdf_export(query, explanation['text'], effective_language)
         pdf_filename = Path(pdf_path).name
 
@@ -274,27 +324,47 @@ async def generate_explanation(
             "pdf_export": pdf_filename
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Explanation failed: {str(e)}")
 
 
-# ── Video ────────────────────────────────────────────────
+# ── Video ─────────────────────────────────────────────────────────────────────
 
 @app.post("/api/generate-video")
 async def generate_video(
+    request: Request,
     query: str = Form(...),
     language: str = Form("auto")
 ):
+    # IP rate limit
+    ip = get_client_ip(request)
+    allowed, reason = check_ip_rate(ip)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
+
+    # Query guardrail
+    q_ok, q_msg = validate_query(query)
+    if not q_ok:
+        raise HTTPException(status_code=400, detail=q_msg)
+
     if not current_content:
         raise HTTPException(status_code=400, detail="No document uploaded")
 
-    # Rate limit video
-    allowed, remaining = check_and_increment("video")
-    if not allowed:
-        raise HTTPException(status_code=429, detail=f"Video limit reached ({LIMITS['video']}/day). Try audio or text format instead.")
+    # Daily video limit
+    v_ok, _ = check_and_increment("video")
+    if not v_ok:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Video limit reached ({LIMITS['video']}/day). "
+                   f"Try audio or text format instead."
+        )
 
     try:
-        effective_language = language if language != "auto" else detect_language(query)
+        effective_language = (
+            language if language != "auto" else detect_language(query)
+        )
 
         print(f"\n{'='*60}")
         print(f"🎬 VIDEO GENERATION: {query}")
@@ -309,24 +379,39 @@ async def generate_video(
         )
         print(f"✅ Explanation: {len(explanation['text'])} chars")
 
+        # Get grounded context for video agent — avoids hallucination cascading
+        grounded_context = content_agent.retrieve_for_video(
+            query=query,
+            context=current_content,
+            top_k=5
+        )
+
         print("\n🎞️  Planning video scenes...")
-        scene_plan = video_agent.plan_scenes(query, explanation['text'], language=effective_language)
+        scene_plan = video_agent.plan_scenes(
+            query=query,
+            explanation=explanation['text'],
+            language=effective_language,
+            grounded_context=grounded_context   # ← grounded, not hallucinated
+        )
         print(f"✅ {len(scene_plan['scenes'])} scenes planned")
         for scene in scene_plan['scenes']:
             print(f"   Scene {scene['id']}: {scene['type']} (~{scene.get('duration', 0):.0f}s)")
 
         print("\n📊 Rendering diagram...")
         diagram_path = diagram_service.mermaid_to_png(scene_plan['mermaid_diagram'])
-        print(f"✅ Diagram rendered")
+        print("✅ Diagram rendered")
 
         print("\n🎤 Generating scene audio...")
-        audio_clips = tts_service.generate_audio_batch(scenes=scene_plan['scenes'], language=effective_language)
+        audio_clips = tts_service.generate_audio_batch(
+            scenes=scene_plan['scenes'],
+            language=effective_language
+        )
 
         if not audio_clips:
             raise Exception("Audio generation failed for all scenes")
 
         total_duration = sum(clip['duration'] for clip in audio_clips)
-        print(f"✅ {len(audio_clips)} audio clips generated ({total_duration:.1f}s total)")
+        print(f"✅ {len(audio_clips)} audio clips ({total_duration:.1f}s total)")
 
         print("\n🎬 Composing video...")
         video_path = video_service.create_video(
@@ -353,35 +438,41 @@ async def generate_video(
             "sync_method": "scene-by-scene"
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"\n❌ VIDEO GENERATION FAILED: {e}\n")
         raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
 
 
-# ── Media Serving ────────────────────────────────────────
+# ── Media serving ─────────────────────────────────────────────────────────────
 
 @app.get("/api/video/{filename}")
 async def serve_video(filename: str):
-    file_path = Path("outputs/video") / filename
+    # Prevent path traversal
+    safe = Path(filename).name
+    file_path = Path("outputs/video") / safe
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Video not found")
-    return FileResponse(path=file_path, media_type="video/mp4", filename=filename)
+    return FileResponse(path=file_path, media_type="video/mp4", filename=safe)
 
 
 @app.get("/api/audio/{filename}")
 async def serve_audio(filename: str):
-    file_path = Path("outputs/audio") / filename
+    safe = Path(filename).name
+    file_path = Path("outputs/audio") / safe
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Audio not found")
-    return FileResponse(path=file_path, media_type="audio/mpeg", filename=filename)
+    return FileResponse(path=file_path, media_type="audio/mpeg", filename=safe)
 
 
 @app.get("/api/export/{filename}")
 async def serve_export(filename: str):
-    file_path = Path("outputs/exports") / filename
+    safe = Path(filename).name
+    file_path = Path("outputs/exports") / safe
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Export not found")
-    return FileResponse(path=file_path, media_type="application/pdf", filename=filename)
+    return FileResponse(path=file_path, media_type="application/pdf", filename=safe)
 
 
 @app.get("/api/usage")
@@ -392,8 +483,16 @@ def get_usage():
         usage["audio"] = 0
         usage["reset_date"] = today
     return {
-        "video": {"used": usage["video"], "limit": LIMITS["video"], "remaining": LIMITS["video"] - usage["video"]},
-        "audio": {"used": usage["audio"], "limit": LIMITS["audio"], "remaining": LIMITS["audio"] - usage["audio"]},
+        "video": {
+            "used": usage["video"],
+            "limit": LIMITS["video"],
+            "remaining": LIMITS["video"] - usage["video"]
+        },
+        "audio": {
+            "used": usage["audio"],
+            "limit": LIMITS["audio"],
+            "remaining": LIMITS["audio"] - usage["audio"]
+        },
         "resets": "daily"
     }
 
