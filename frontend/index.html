@@ -99,6 +99,48 @@
 
         .tech-border { border: 1px solid var(--border2); background: var(--surface); }
 
+        /* ── UPLOAD ZONE ──────────────────────── */
+        .upload-zone {
+            border: 2px dashed var(--border2); border-radius: 12px;
+            padding: 48px; text-align: center; transition: all 0.2s; cursor: pointer;
+            position: relative;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(59,130,246,0.03);
+        }
+        .upload-zone .size-cap {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-top: 10px; padding: 4px 10px; border-radius: 4px;
+            background: var(--surface2); border: 1px solid var(--border2);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim);
+        }
+        .upload-zone .size-cap .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+
+        /* ── PROGRESS BAR ─────────────────────── */
+        .upload-progress {
+            height: 3px; background: var(--border2); border-radius: 2px;
+            margin-top: 10px; overflow: hidden;
+        }
+        .upload-progress-fill {
+            height: 100%; background: var(--accent); border-radius: 2px;
+            width: 0%; transition: width 0.3s ease;
+            animation: progressPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes progressPulse {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.6; }
+        }
+
+        /* Error shake */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        .shake { animation: shake 0.4s ease; }
+
         /* ── LOADING OVERLAY ──────────────────── */
         #loadingOverlay {
             position: fixed; inset: 0; background: rgba(8,8,16,0.93);
@@ -159,7 +201,7 @@
         <button class="ls-btn" id="lsBtn" onclick="startApp()" disabled>
             <span id="lsBtnTxt">INITIALIZING…</span>
         </button>
-        <div class="ls-ver">v1.0 &nbsp;·&nbsp; Multi-agent · Multi-modal · Multi-language</div>
+        <div class="ls-ver">v1.1 &nbsp;·&nbsp; Multi-agent · Multi-modal · Multi-language</div>
     </div>
 </div>
 
@@ -171,7 +213,7 @@
             <div class="flex items-center gap-3">
                 <div class="w-6 h-6 rounded" style="background:var(--accent);"></div>
                 <span class="text-lg font-bold">ExplainBot</span>
-                <span class="text-xs mono" style="color:var(--text-dim);">v1.0</span>
+                <span class="text-xs mono" style="color:var(--text-dim);">v1.1</span>
             </div>
             <div class="flex items-center gap-5 text-sm mono">
                 <a href="#demo" style="color:var(--text-dim);" class="hover:text-white transition">Demo</a>
@@ -208,9 +250,9 @@
                         <span style="color:var(--border2);">·</span>
                         <span style="color:#f472b6;">FastAPI</span>
                         <span style="color:var(--border2);">·</span>
-                        <span style="color:#34d399;">ReportLab</span>
+                        <span style="color:#34d399;">BM25 Retrieval</span>
                     </div>
-                    <div class="text-xs mt-2" style="color:var(--text-dim);">↳ Multi-doc · Auto language detect · PDF export · Query history · Rate limiting</div>
+                    <div class="text-xs mt-2" style="color:var(--text-dim);">↳ Grounded retrieval · Multi-doc · Auto language detect · PDF export · Rate limiting</div>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="document.getElementById('uploadArea').scrollIntoView({behavior:'smooth'})"
@@ -228,7 +270,7 @@
 
     <main class="max-w-6xl mx-auto px-6 py-12" id="demo">
 
-        <!-- Step 1 -->
+        <!-- Step 1: Upload -->
         <section class="mb-12" id="uploadArea">
             <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
@@ -236,20 +278,27 @@
                     <h2 class="text-xl font-bold">Upload Documents</h2>
                     <span class="text-xs mono" style="color:var(--text-dim);">Multiple files supported</span>
                 </div>
-                <div class="border-2 border-dashed rounded-xl p-12 text-center transition cursor-pointer" style="border-color:var(--border2);"
-                     onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border2)'">
+
+                <!-- Upload zone with drag-and-drop -->
+                <div class="upload-zone" id="uploadZone"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event)"
+                     onclick="document.getElementById('fileInput').click()">
                     <input type="file" id="fileInput" accept=".pdf,.txt" class="hidden">
-                    <label for="fileInput" class="cursor-pointer">
-                        <div class="text-4xl mb-3">📄</div>
-                        <p style="color:var(--text-dim);">Click or drop PDF/TXT files</p>
-                        <p class="text-xs mono mt-1" style="color:#444;">Upload multiple documents — queries run across all of them</p>
-                    </label>
+                    <div class="text-4xl mb-3">📄</div>
+                    <p style="color:var(--text-dim);">Click or drag & drop your file here</p>
+                    <div class="size-cap">
+                        <span class="dot"></span>
+                        PDF or TXT &nbsp;·&nbsp; Max 5 MB &nbsp;·&nbsp; ~80 pages recommended
+                    </div>
                 </div>
+
                 <div id="uploadStatus" class="mt-4 hidden"></div>
             </div>
         </section>
 
-        <!-- Step 2 -->
+        <!-- Step 2: Query -->
         <section id="querySection" class="mb-12" style="display:none;">
             <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
@@ -264,7 +313,12 @@
                                    class="w-full px-4 py-3 rounded-lg transition outline-none mono text-sm"
                                    style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);"
                                    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
-                                   placeholder="Walk me through the complete transaction flow">
+                                   placeholder="Walk me through the complete transaction flow"
+                                   maxlength="400">
+                            <div class="flex justify-between mt-1">
+                                <span class="text-xs mono" style="color:var(--text-dim);">Ask anything about your document</span>
+                                <span class="text-xs mono" id="queryCharCount" style="color:var(--text-dim);">0 / 400</span>
+                            </div>
                         </div>
                         <div class="grid grid-cols-3 gap-4">
                             <div>
@@ -305,7 +359,7 @@
             </div>
         </section>
 
-        <!-- Step 3 -->
+        <!-- Step 3: Results -->
         <section id="resultsSection" class="mb-12" style="display:none;">
             <div class="rounded-xl p-8 tech-border">
                 <div class="flex items-center gap-3 mb-6">
@@ -336,16 +390,16 @@
             <h2 class="text-2xl font-bold mb-8">How It Works</h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mono text-sm">
                 <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
-                    <div class="mb-2" style="color:#60a5fa;">1. DECISION</div>
+                    <div class="mb-2" style="color:#60a5fa;">1. RETRIEVAL</div>
+                    <p style="color:var(--text-dim);">BM25 retrieves only the most relevant document chunks — never hallucination-prone full-context</p>
+                </div>
+                <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
+                    <div class="mb-2" style="color:#a78bfa;">2. DECISION</div>
                     <p style="color:var(--text-dim);">Agent analyzes query and chooses format — text, audio, or video</p>
                 </div>
                 <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
-                    <div class="mb-2" style="color:#a78bfa;">2. PLANNING</div>
-                    <p style="color:var(--text-dim);">Video agent creates 4-scene script with per-scene narration</p>
-                </div>
-                <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
                     <div class="mb-2" style="color:#4ade80;">3. GENERATION</div>
-                    <p style="color:var(--text-dim);">ElevenLabs or OpenAI TTS creates audio per scene in detected language</p>
+                    <p style="color:var(--text-dim);">ElevenLabs or OpenAI TTS creates per-scene audio in the detected language</p>
                 </div>
                 <div class="rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
                     <div class="mb-2" style="color:#fbbf24;">4. COMPOSITION</div>
@@ -354,7 +408,7 @@
             </div>
             <div class="mt-8 rounded-xl p-6" style="background:var(--surface2);border:1px solid var(--border2);">
                 <div class="text-xs mono mb-2" style="color:var(--text-dim);">KEY INNOVATION</div>
-                <p style="color:var(--text-dim);"><strong class="text-white">Scene-by-Scene A/V Sync:</strong> Each scene gets its own narration script and audio clip. Duration is read from the actual audio file — not estimated. What you see always matches what you hear.</p>
+                <p style="color:var(--text-dim);"><strong class="text-white">Grounded Retrieval:</strong> Answers come from the document, not the LLM's imagination. BM25 finds the right chunks. If the answer isn't there, it says so.</p>
             </div>
         </div>
     </section>
@@ -390,7 +444,7 @@
 const BOOT = [
     { t: 'sys',  m: '[ ExplainBot ] initializing agents…' },
     { t: 'ok',   m: '✓ decision agent loaded' },
-    { t: 'ok',   m: '✓ content agent loaded' },
+    { t: 'ok',   m: '✓ content agent (BM25 retrieval) loaded' },
     { t: 'ok',   m: '✓ video agent loaded' },
     { t: 'ok',   m: '✓ hybrid TTS ready (ElevenLabs + OpenAI)' },
     { t: 'info', m: '→ connecting to backend…' },
