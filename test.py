@@ -171,7 +171,7 @@ class VideoAgent:
     
     def __init__(self):
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "qwen/qwen3-8b"
+        self.model = "qwen/qwen3.8-27b"
 
     def plan_scenes(self, query: str, explanation: str) -> dict:
         """
