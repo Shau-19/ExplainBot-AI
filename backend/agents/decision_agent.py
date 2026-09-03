@@ -38,7 +38,7 @@ class DecisionAgent:
 
     def __init__(self):
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "llama-3.1-8b-instant"
+        self.model = "qwen/qwen3-8b"
 
     def analyze_and_decide(self, user_query: str, content_context: str, format_hint: str = "auto") -> dict:
         # User explicitly chose a format — respect it, skip AI

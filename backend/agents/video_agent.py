@@ -18,7 +18,7 @@ class VideoAgent:
 
     def __init__(self):
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "llama-3.1-8b-instant"
+        self.model = "qwen/qwen3-8b"
 
     def plan_scenes(self, query: str, explanation: str, language: str = "en") -> dict:
         lang_name = LANGUAGE_NAMES.get(language, LANGUAGE_NAMES["default"])

@@ -71,7 +71,7 @@ ElevenLabs → OpenAI        Diagram Service     TTS per scene
 ## Stack
 
 ```
-LLM inference      Groq · llama-3.1-8b-instant
+LLM inference      Groq · qwen/qwen3-8b
 TTS primary        ElevenLabs · eleven_multilingual_v2
 TTS fallback       OpenAI · tts-1-hd
 Video composition  MoviePy

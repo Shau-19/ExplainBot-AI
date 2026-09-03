@@ -16,7 +16,7 @@ LANGUAGE_NAMES = {
 class ContentAgent:
     def __init__(self):
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "llama-3.1-8b-instant"
+        self.model = "qwen/qwen3-8b"
 
     def generate_explanation(
         self,
