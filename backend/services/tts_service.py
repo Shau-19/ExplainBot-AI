@@ -5,9 +5,12 @@ from pathlib import Path
 from moviepy.editor import AudioFileClip
 
 OPENAI_VOICE_BY_LANG = {
-    "en": "onyx",
+    "en": "fable",    # warm, natural, storytelling
     "hi": "nova",
-    "default": "nova"
+    "es": "alloy",
+    "de": "onyx",
+    "fr": "shimmer",
+    "default": "fable"
 }
 
 
@@ -95,10 +98,10 @@ class HybridTTSService:
             except Exception as e:
                 error_str = str(e)
                 print(f"⚠️ ElevenLabs failed: {error_str}, trying OpenAI...")
-                if "quota_exceeded" in error_str:
+                if "quota_exceeded" in error_str or "401" in error_str:
                     self.el_quota_exhausted = True
                     self._save_state()
-                    print("⚠️ ElevenLabs quota exhausted — switching to OpenAI permanently")
+                    print("⚠️ ElevenLabs blocked — switching to OpenAI permanently")
 
         if self.oai_client:
             try:
@@ -127,7 +130,7 @@ class HybridTTSService:
                     "scene_id": scene["id"],
                     "audio_path": result["audio_path"],
                     "filename": result["filename"],
-                    "duration": result["duration_actual"],  # real duration
+                    "duration": result["duration_actual"],
                     "provider": result["provider"]
                 })
                 print(f"   ✅ Scene {scene['id']}: {result['duration_actual']:.1f}s via {result['provider']}")
@@ -161,7 +164,6 @@ class HybridTTSService:
         return True
 
     def _get_actual_duration(self, path: str) -> float:
-        """Read actual audio duration from file."""
         try:
             clip = AudioFileClip(path)
             duration = clip.duration

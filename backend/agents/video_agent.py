@@ -1,8 +1,7 @@
-
 from groq import Groq
 import os
 import json
-
+from guardrails import log_token_estimate
 
 LANGUAGE_NAMES = {
     "en": "English",
@@ -20,27 +19,51 @@ class VideoAgent:
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.model = "qwen/qwen3-8b"
 
-    def plan_scenes(self, query: str, explanation: str, language: str = "en") -> dict:
+    def plan_scenes(
+        self,
+        query: str,
+        explanation: str,
+        language: str = "en",
+        grounded_context: str = ""
+    ) -> dict:
+        """
+        Plan 4 scenes for a video explanation.
+
+        `grounded_context` — retrieved chunks from ContentAgent.
+        When provided, scene narration is grounded in the actual document
+        rather than the LLM-generated explanation (which may hallucinate).
+        Falls back to explanation if grounded_context is empty.
+        """
         lang_name = LANGUAGE_NAMES.get(language, LANGUAGE_NAMES["default"])
+
+        # Prefer grounded source; cap at 1200 chars to stay within token budget
+        source_text = (grounded_context or explanation)[:1200]
 
         prompt = f"""You are creating a video explanation plan with scene-by-scene narration.
 
 TOPIC: {query}
 
-FULL EXPLANATION:
-{explanation[:1200]}
+SOURCE CONTENT (use ONLY this — do not add outside knowledge):
+{source_text}
 
 Create a 4-scene video plan. Each scene MUST have its OWN narration that matches what's shown.
+All narration must be grounded in the source content above.
 
-LANGUAGE RULE: 
+LANGUAGE RULE:
 - All narration fields must be written in {lang_name}.
-- All visual text fields (title text, heading, points, caption, summary text) must be in English.
+- All visual text fields (title, heading, points, caption, summary) must be in English.
 
-Respond ONLY with valid JSON:
+DIAGRAM RULE:
+Choose the most appropriate Mermaid diagram type:
+- flowchart LR  → architectures, component relationships, system overviews
+- sequenceDiagram → step-by-step interactions between systems or actors
+- graph TD → hierarchies or simple top-down flows
+
+Respond ONLY with valid JSON — no markdown, no extra text:
 {{
     "title": "Short punchy title (max 50 chars, English)",
     "total_duration": 35,
-    "mermaid_diagram": "graph TD; A[User]-->B[API]; B-->C[Auth]; C-->D[Token]",
+    "mermaid_diagram": "flowchart LR\\n    A[User] --> B[Network]\\n    B --> C[Nodes]\\n    C --> D[Blockchain]",
     "scenes": [
         {{
             "id": 1,
@@ -76,9 +99,11 @@ Respond ONLY with valid JSON:
 
 Rules:
 1. Narration word counts must fit the duration (2.5 words/second)
-2. mermaid_diagram must be valid Mermaid syntax
+2. Mermaid diagram must be valid syntax for the chosen type
 3. total_duration should be 30-40 seconds
-4. Each scene's narration must match what's visible in that scene"""
+4. Each scene narration must reflect what is in the SOURCE CONTENT — not invented facts"""
+
+        log_token_estimate("VideoAgent prompt", prompt)
 
         try:
             response = self.client.chat.completions.create(
@@ -86,11 +111,17 @@ Rules:
                 messages=[
                     {
                         "role": "system",
-                        "content": f"You create video scripts. Visual text in English, narration in {lang_name}. Respond only with valid JSON."
+                        "content": (
+                            f"You create video scripts strictly from provided source content. "
+                            f"Visual text in English, narration in {lang_name}. "
+                            f"Never invent facts not present in the source. "
+                            f"Respond only with valid JSON."
+                        )
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.4
+                temperature=0.3,
+                max_tokens=800     # 4 scenes with narration — 800 is plenty
             )
 
             raw = response.choices[0].message.content.strip()
@@ -118,7 +149,7 @@ Rules:
         return {
             "title": query[:50],
             "total_duration": 35,
-            "mermaid_diagram": "graph TD; A[Start] --> B[Process] --> C[Result]",
+            "mermaid_diagram": "flowchart LR\n    A[Start] --> B[Process] --> C[Result]",
             "scenes": [
                 {
                     "id": 1,
@@ -151,4 +182,3 @@ Rules:
                 }
             ]
         }
-
