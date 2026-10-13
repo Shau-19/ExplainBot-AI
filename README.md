@@ -76,7 +76,7 @@ ElevenLabs → OpenAI        Diagram Service     TTS per scene
 ## Stack
 
 ```
-LLM inference      Groq · qwen/qwen3-8b
+LLM inference      OpenAI · gpt-5.6-luna
 TTS primary        ElevenLabs · eleven_multilingual_v2
 TTS fallback       OpenAI · tts-1-hd
 Video composition  MoviePy
@@ -143,9 +143,9 @@ Open `http://localhost:8000`
 ## Environment Variables
 
 ```env
-GROQ_API_KEY=
-ELEVENLABS_API_KEY=
 OPENAI_API_KEY=
+ELEVENLABS_API_KEY=
+# optional: OPENAI_MODEL=gpt-5.6-luna
 ```
 
 ---

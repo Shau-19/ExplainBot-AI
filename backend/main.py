@@ -153,7 +153,7 @@ def get_client_ip(request: Request) -> str:
 def health_check():
     return {
         "status": "healthy",
-        "llm": "groq",
+        "llm": "openai",
         "tts": tts_service.get_status()['active_provider'],
         "video": "moviepy",
         "documents_loaded": len(documents),

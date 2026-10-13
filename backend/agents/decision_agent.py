@@ -1,8 +1,7 @@
 
 
-from groq import Groq
-import os
 import json
+from llm import get_client, get_model
 
 
 STRICT_PROMPT = """You decide the best format to explain content to a user.
@@ -37,8 +36,8 @@ Respond ONLY with valid JSON, no markdown:
 class DecisionAgent:
 
     def __init__(self):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "qwen/qwen3.8-27b"
+        self.client = get_client()
+        self.model = get_model()
 
     def analyze_and_decide(self, user_query: str, content_context: str, format_hint: str = "auto") -> dict:
         # User explicitly chose a format — respect it, skip AI
@@ -59,8 +58,7 @@ class DecisionAgent:
                 messages=[
                     {"role": "system", "content": "You respond only with valid JSON. No markdown, no extra text."},
                     {"role": "user", "content": prompt}
-                ],
-                temperature=0.1
+                ]
             )
 
             raw = response.choices[0].message.content.strip()

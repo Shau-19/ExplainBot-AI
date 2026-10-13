@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+backend/uploads/
+backend/outputs/
+*.mp3
+
+*.png
+*.pdf
+.tts_state.json

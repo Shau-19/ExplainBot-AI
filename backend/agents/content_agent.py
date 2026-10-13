@@ -1,5 +1,4 @@
-from groq import Groq
-import os
+from llm import get_client, get_model
 from rank_bm25 import BM25Okapi
 from guardrails import log_token_estimate
 
@@ -16,8 +15,8 @@ LANGUAGE_NAMES = {
 class ContentAgent:
 
     def __init__(self):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "qwen/qwen3.8-27b"
+        self.client = get_client()
+        self.model = get_model()
 
     # ── Public ───────────────────────────────────────────────
 
@@ -78,8 +77,7 @@ class ContentAgent:
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,   # lower = more faithful to context
-                max_tokens=600     # cap output — explanations don't need more
+                max_completion_tokens=2000  # includes reasoning tokens; answer itself is short
             )
             text = response.choices[0].message.content
             return {

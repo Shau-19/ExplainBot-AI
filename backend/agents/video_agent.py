@@ -1,6 +1,5 @@
-from groq import Groq
-import os
 import json
+from llm import get_client, get_model
 from guardrails import log_token_estimate
 
 LANGUAGE_NAMES = {
@@ -16,8 +15,8 @@ LANGUAGE_NAMES = {
 class VideoAgent:
 
     def __init__(self):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "qwen/qwen3.8-27b"
+        self.client = get_client()
+        self.model = get_model()
 
     def plan_scenes(
         self,
@@ -120,8 +119,7 @@ Rules:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
-                max_tokens=800     # 4 scenes with narration — 800 is plenty
+                max_completion_tokens=3000  # includes reasoning tokens; plan JSON is ~800
             )
 
             raw = response.choices[0].message.content.strip()
