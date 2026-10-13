@@ -15,6 +15,7 @@ $backend = Join-Path $PSScriptRoot "..\backend"
 $python = Join-Path $backend "venv\Scripts\python.exe"
 Set-Location $backend
 $env:PYTHONIOENCODING = "utf-8"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8   # fixes garbled ▶ / Devanagari in the terminal
 
 $argsList = @("..\evals\run.py", "--suites", $Suites, "--repeats", $Repeats)
 if ($Quick) { $argsList += "--quick" }
