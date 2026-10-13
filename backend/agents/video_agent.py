@@ -1,3 +1,4 @@
+import os
 import json
 from llm import get_client, get_model, reasoning_kwargs
 from guardrails import log_token_estimate
@@ -10,6 +11,13 @@ LANGUAGE_NAMES = {
     "fr": "French",
     "default": "English"
 }
+
+MAX_NODES = 8
+MAX_ATTEMPTS = 2
+
+
+class VideoPlanError(Exception):
+    """Raised when the model cannot produce a valid scene plan."""
 
 
 class VideoAgent:
@@ -32,152 +40,126 @@ class VideoAgent:
         When provided, scene narration is grounded in the actual document
         rather than the LLM-generated explanation (which may hallucinate).
         Falls back to explanation if grounded_context is empty.
+
+        Raises VideoPlanError if no valid plan after MAX_ATTEMPTS — we never
+        return a placeholder plan, because a fake video is worse than an error.
         """
         lang_name = LANGUAGE_NAMES.get(language, LANGUAGE_NAMES["default"])
+        source_text = (grounded_context or explanation)[:3500]
+        prompt = self._build_prompt(query, source_text, lang_name)
 
-        # Prefer grounded source; cap at 1200 chars to stay within token budget
-        source_text = (grounded_context or explanation)[:1200]
+        log_token_estimate("VideoAgent prompt", prompt)
 
-        prompt = f"""You are creating a video explanation plan with scene-by-scene narration.
+        last_error = None
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    # "none" is ~2x faster with the structured prompt; set VIDEO_REASONING_EFFORT=low for more detail
+                    **reasoning_kwargs(os.getenv("VIDEO_REASONING_EFFORT", "none")),
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                f"You create video scripts strictly from provided source content. "
+                                f"Visual text in English, narration in {lang_name}. "
+                                f"Never invent facts not present in the source. "
+                                f"Respond only with valid JSON."
+                            )
+                        },
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_completion_tokens=4000
+                )
+                plan = json.loads(response.choices[0].message.content)
+                return self._validate(plan)
+
+            except Exception as e:
+                last_error = e
+                print(f"⚠️ Video plan attempt {attempt}/{MAX_ATTEMPTS} failed: {e}")
+
+        raise VideoPlanError(f"Could not plan video: {last_error}")
+
+    # ── Private ──────────────────────────────────────────────
+
+    def _build_prompt(self, query: str, source_text: str, lang_name: str) -> str:
+        return f"""You are creating a video explanation plan with scene-by-scene narration.
 
 TOPIC: {query}
 
 SOURCE CONTENT (use ONLY this — do not add outside knowledge):
 {source_text}
 
-Create a 4-scene video plan. Each scene MUST have its OWN narration that matches what's shown.
-All narration must be grounded in the source content above.
+Create a 4-scene video plan: title, diagram, text, summary. Each scene has its OWN narration
+that matches what is shown. All narration and labels must come from the source content.
 
 LANGUAGE RULE:
 - All narration fields must be written in {lang_name}.
-- All visual text fields (title, heading, points, caption, summary) must be in English.
+- All visual text (title, labels, points, caption, summary) must be in English.
 
 DIAGRAM RULE:
-Choose the most appropriate Mermaid diagram type:
-- flowchart LR  → architectures, component relationships, system overviews
-- sequenceDiagram → step-by-step interactions between systems or actors
-- graph TD → hierarchies or simple top-down flows
+The diagram shows the real components/steps from the source, in the order they happen.
+- 3 to {MAX_NODES} nodes. Labels are short (max 22 chars), specific names from the source
+  (e.g. "API Gateway", "Redis Rate Limiter") — never generic words like "Start" or "Process".
+- Edges follow the flow; an optional edge label (max 16 chars) names the action.
+- The scene 2 narration should mention the nodes in the same order they appear.
 
-Respond ONLY with valid JSON — no markdown, no extra text:
+Respond ONLY with JSON in exactly this shape:
 {{
-    "title": "Short punchy title (max 50 chars, English)",
-    "total_duration": 35,
-    "mermaid_diagram": "flowchart LR\\n    A[User] --> B[Network]\\n    B --> C[Nodes]\\n    C --> D[Blockchain]",
+    "title": "Short punchy title (max 50 chars)",
+    "diagram": {{
+        "nodes": [{{"id": "A", "label": "Client"}}, {{"id": "B", "label": "API Gateway"}}],
+        "edges": [{{"from": "A", "to": "B", "label": "request"}}]
+    }},
     "scenes": [
-        {{
-            "id": 1,
-            "type": "title",
-            "text": "Title shown on screen (English)",
-            "narration": "Opening narration in {lang_name} (15-20 words)",
-            "duration": 4
-        }},
-        {{
-            "id": 2,
-            "type": "diagram",
-            "caption": "Caption under diagram (English)",
-            "narration": "Describe the diagram in {lang_name} (40-50 words)",
-            "duration": 15
-        }},
-        {{
-            "id": 3,
-            "type": "text",
-            "heading": "Key Points (English)",
-            "points": ["Point 1 (English)", "Point 2", "Point 3"],
-            "narration": "Explain the points in {lang_name} (35-45 words)",
-            "duration": 12
-        }},
-        {{
-            "id": 4,
-            "type": "summary",
-            "text": "One-line takeaway (English)",
-            "narration": "Wrap up in {lang_name} (15-20 words)",
-            "duration": 4
-        }}
+        {{"id": 1, "type": "title", "text": "Title shown on screen",
+          "narration": "Opening narration in {lang_name} (12-16 words)"}},
+        {{"id": 2, "type": "diagram", "caption": "Caption under diagram",
+          "narration": "Walk through the diagram in {lang_name} (35-45 words)"}},
+        {{"id": 3, "type": "text", "heading": "Key Points",
+          "points": ["Specific fact from source", "Another fact", "A third fact"],
+          "narration": "Explain the points in order in {lang_name} (30-40 words)"}},
+        {{"id": 4, "type": "summary", "text": "One-line takeaway",
+          "narration": "Wrap up in {lang_name} (12-16 words)"}}
     ]
 }}
 
 Rules:
-1. Narration word counts must fit the duration (2.5 words/second)
-2. Mermaid diagram must be valid syntax for the chosen type
-3. total_duration should be 30-40 seconds
-4. Each scene narration must reflect what is in the SOURCE CONTENT — not invented facts"""
+1. Narration must meet the word counts above (about 2.5 words/second of video).
+2. Points are concrete facts or numbers from the source, max 12 words each.
+3. Nothing may be invented that is not in the SOURCE CONTENT."""
 
-        log_token_estimate("VideoAgent prompt", prompt)
+    def _validate(self, plan: dict) -> dict:
+        scenes = plan.get("scenes")
+        if not isinstance(scenes, list) or len(scenes) != 4:
+            raise ValueError("plan must contain exactly 4 scenes")
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                **reasoning_kwargs(),
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You create video scripts strictly from provided source content. "
-                            f"Visual text in English, narration in {lang_name}. "
-                            f"Never invent facts not present in the source. "
-                            f"Respond only with valid JSON."
-                        )
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                max_completion_tokens=3000  # includes reasoning tokens; plan JSON is ~800
-            )
+        expected = ["title", "diagram", "text", "summary"]
+        for i, (scene, kind) in enumerate(zip(scenes, expected), start=1):
+            if scene.get("type") != kind:
+                raise ValueError(f"scene {i} must be type '{kind}'")
+            scene["id"] = i
+            if len((scene.get("narration") or "").split()) < 8:
+                raise ValueError(f"scene {i} narration too short")
 
-            raw = response.choices[0].message.content.strip()
+        diagram = plan.get("diagram") or {}
+        nodes = diagram.get("nodes") or []
+        ids = {n.get("id") for n in nodes}
+        if not (2 <= len(nodes) <= MAX_NODES) or len(ids) != len(nodes):
+            raise ValueError(f"diagram needs 2-{MAX_NODES} uniquely-identified nodes")
+        diagram["edges"] = [
+            e for e in (diagram.get("edges") or [])
+            if e.get("from") in ids and e.get("to") in ids
+        ]
+        if not diagram["edges"]:
+            raise ValueError("diagram has no valid edges")
+        plan["diagram"] = diagram
 
-            if "```" in raw:
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
+        points = [p for p in scenes[2].get("points", []) if str(p).strip()]
+        if not points:
+            raise ValueError("text scene has no points")
+        scenes[2]["points"] = [str(p) for p in points[:4]]
 
-            plan = json.loads(raw)
-
-            for scene in plan['scenes']:
-                if 'narration' not in scene or not scene['narration']:
-                    scene['narration'] = "Continuing with the explanation."
-
-            return plan
-
-        except Exception as e:
-            print(f"❌ Video agent error: {e}")
-            return self._fallback_plan(query, explanation)
-
-    def _fallback_plan(self, query: str, explanation: str) -> dict:
-        sentences = explanation.split('.')[:8]
-
-        return {
-            "title": query[:50],
-            "total_duration": 35,
-            "mermaid_diagram": "flowchart LR\n    A[Start] --> B[Process] --> C[Result]",
-            "scenes": [
-                {
-                    "id": 1,
-                    "type": "title",
-                    "text": query[:50],
-                    "narration": sentences[0] if sentences else "Let's explore this topic.",
-                    "duration": 4
-                },
-                {
-                    "id": 2,
-                    "type": "diagram",
-                    "caption": "Process Overview",
-                    "narration": '. '.join(sentences[1:4]) if len(sentences) > 3 else "The system follows this flow.",
-                    "duration": 15
-                },
-                {
-                    "id": 3,
-                    "type": "text",
-                    "heading": "Key Points",
-                    "points": ["Step 1", "Step 2", "Step 3"],
-                    "narration": '. '.join(sentences[4:6]) if len(sentences) > 5 else "Here are the key aspects.",
-                    "duration": 12
-                },
-                {
-                    "id": 4,
-                    "type": "summary",
-                    "text": "Summary",
-                    "narration": sentences[-1] if sentences else "That covers the main points.",
-                    "duration": 4
-                }
-            ]
-        }
+        plan["total_duration"] = 0  # real duration comes from the audio clips
+        return plan

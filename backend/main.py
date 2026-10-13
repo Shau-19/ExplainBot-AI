@@ -16,9 +16,8 @@ from reportlab.lib import colors
 
 from agents.decision_agent import DecisionAgent
 from agents.content_agent import ContentAgent
-from agents.video_agent import VideoAgent
+from agents.video_agent import VideoAgent, VideoPlanError
 from services.tts_service import HybridTTSService
-from services.diagram_service import DiagramService
 from services.video_service import VideoService
 from guardrails import (
     validate_query,
@@ -66,7 +65,6 @@ decision_agent = DecisionAgent()
 content_agent  = ContentAgent()
 video_agent    = VideoAgent()
 tts_service    = HybridTTSService()
-diagram_service = DiagramService()
 video_service  = VideoService()
 
 UPLOAD_DIR = Path("uploads")
@@ -371,47 +369,48 @@ async def generate_video(
         print(f"🎬 VIDEO GENERATION: {query}")
         print(f"{'='*60}")
 
-        print("📝 Generating explanation...")
-        explanation = content_agent.generate_explanation(
-            query=query,
-            context=current_content,
-            format_type='video',
-            language=effective_language
-        )
-        print(f"✅ Explanation: {len(explanation['text'])} chars")
-
-        # Get grounded context for video agent — avoids hallucination cascading
         grounded_context = content_agent.retrieve_for_video(
             query=query,
             context=current_content,
             top_k=5
         )
 
-        print("\n🎞️  Planning video scenes...")
-        scene_plan = video_agent.plan_scenes(
-            query=query,
-            explanation=explanation['text'],
-            language=effective_language,
-            grounded_context=grounded_context   # ← grounded, not hallucinated
-        )
+        # The explanation call doubles as an off-topic / not-in-document guard.
+        # Planning only needs the retrieved chunks, so the two run concurrently.
+        print("📝 Checking relevance + 🎞️ planning scenes in parallel...")
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            explain_future = pool.submit(
+                content_agent.generate_explanation,
+                query=query,
+                context=current_content,
+                format_type='video',
+                language=effective_language
+            )
+            plan_future = pool.submit(
+                video_agent.plan_scenes,
+                query=query,
+                explanation=grounded_context,
+                language=effective_language,
+                grounded_context=grounded_context
+            )
+            explanation = explain_future.result()
+            try:
+                scene_plan = plan_future.result()
+            except VideoPlanError as e:
+                raise HTTPException(status_code=502, detail=str(e))
+
+        refusal = explanation['text'].strip()
+        if refusal.startswith(("Please ask something relevant", "This information is not in the uploaded document")):
+            raise HTTPException(status_code=400, detail=refusal)
+
         print(f"✅ {len(scene_plan['scenes'])} scenes planned")
         for scene in scene_plan['scenes']:
-            print(f"   Scene {scene['id']}: {scene['type']} (~{scene.get('duration', 0):.0f}s)")
+            print(f"   Scene {scene['id']}: {scene['type']}")
 
-        print("\n📊 Rendering diagram...")
-        # Diagram (network render) and scene audio are independent — run them concurrently
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            diagram_future = pool.submit(
-                diagram_service.mermaid_to_png, scene_plan['mermaid_diagram']
-            )
-            audio_future = pool.submit(
-                tts_service.generate_audio_batch,
-                scene_plan['scenes'],
-                effective_language
-            )
-            diagram_path = diagram_future.result()
-            audio_clips = audio_future.result()
-        print("✅ Diagram rendered")
+        print("\n🎤 Generating scene audio...")
+        audio_clips = tts_service.generate_audio_batch(
+            scene_plan['scenes'], effective_language
+        )
 
         if not audio_clips:
             raise Exception("Audio generation failed for all scenes")
@@ -423,7 +422,7 @@ async def generate_video(
         video_path = video_service.create_video(
             scenes=scene_plan['scenes'],
             audio_clips=audio_clips,
-            diagram_path=diagram_path
+            diagram=scene_plan['diagram']
         )
 
         filename = Path(video_path).name
