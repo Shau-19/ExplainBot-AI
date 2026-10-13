@@ -1,6 +1,6 @@
 # Usage (from anywhere):
 #   .\evals\run_evals.ps1                 # full run, 1 repeat (~2-3 min, ~150 API calls)
-#   .\evals\run_evals.ps1 -Suites guardrails,retrieval     # free: no API calls
+#   .\evals\run_evals.ps1 -Suites guardrails,retrieval     # ~free: regex + a few cached embedding calls
 #   .\evals\run_evals.ps1 -Quick          # about 1/3 of the data, fast smoke test
 #   .\evals\run_evals.ps1 -Repeats 3      # mean +/- std over 3 runs (LLM output is noisy)
 # Output: evals\results\latest.md  (paste this file back)

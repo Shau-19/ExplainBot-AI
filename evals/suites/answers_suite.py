@@ -16,7 +16,7 @@ def run(ctx) -> dict:
         out = agent.generate_explanation(item["question"], ctx.combined, "text", item["lang"])
         latency = (time.time() - t0) * 1000
         answer = out["text"]
-        retrieved = agent._retrieve(item["question"], ctx.combined, top_k=4)
+        retrieved = agent._retrieve(item["question"], ctx.combined, top_k=4, language=item["lang"])
 
         row = {"id": item["id"], "category": item["category"], "lang": item["lang"], "answerable": item["answerable"],
                "question": item["question"], "answer": answer, "latency_ms": latency}

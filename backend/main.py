@@ -372,7 +372,8 @@ async def generate_video(
         grounded_context = content_agent.retrieve_for_video(
             query=query,
             context=current_content,
-            top_k=5
+            top_k=5,
+            language=effective_language
         )
 
         # The explanation call doubles as an off-topic / not-in-document guard.

@@ -5,7 +5,7 @@ Measures each stage of the pipeline separately, so a regression points at one co
 | Suite | Measures | Calls the API? |
 |---|---|---|
 | `guardrails` | injection block rate, false-positive rate, held-out generalisation | no |
-| `retrieval` | BM25 hit@k / MRR with a chunk-size ablation | no |
+| `retrieval` | hit@k / MRR of the production ranker; BM25 vs hybrid vs translation; chunk-size ablation | a few cheap embedding calls (cached) |
 | `routing` | DecisionAgent accuracy, per-class P/R, stability across repeats | yes |
 | `answers` | fact coverage, faithfulness, abstention on unanswerable/off-topic, language match (en/hi/es) | yes (+ LLM judge) |
 | `video_plan` | plan validity, label/point grounding, narration length, layout geometry | yes |
@@ -52,5 +52,5 @@ Output: `evals/results/latest.md` (human report) and `latest.json` (raw, incl. p
 | Content prompt gave contradictory instructions (answer from general knowledge *and* refuse) | intermittent false refusals, 0-7% run to run | single grounding policy: coverage 0.963 -> 1.000, false abstention 7.4% -> 0%, faithfulness held at 0.996 |
 | Regex guard overfits | 100% on dev set, 33% on held-out attacks | dev fixes shipped (multilingual, "override"/"sudo" false positives); LLM guard is the next step |
 | OpenAI voices are all weak on Hindi | CER ~0.28 for both `alloy` and `nova`, 0.32-0.44 for `shimmer`/`onyx`; an earlier run showed alloy at 0.11, which did not replicate (5 sentences is too few) | kept `alloy` (slightly lower WER), but treat voice choice as unproven until the MOS sheet / ElevenLabs is benchmarked; English loan words in Devanagari are the worst case |
-| BM25 misses on a realistic corpus | hit@4 = 0.91; non-English 0.71; 300-word chunks beat 100/200 | candidates: query translation, hybrid/dense retrieval, top_k |
+| BM25-only retrieval missed answers on a realistic corpus | hit@4 0.91 (non-English 0.71), hit@1 0.71 | hybrid BM25 + embeddings (rank-fused) + English query translation + punctuation-stripping tokeniser: hit@4 **1.00** (non-English 1.00), hit@1 0.85, MRR 0.80 -> 0.92. Cost: +1-2 s on non-English questions. Answer-level effect: see next run |
 | Upload limit vs real notes | the SCM deck is 22 MB; `MAX_UPLOAD_BYTES` is 5 MB | product decision, not changed |

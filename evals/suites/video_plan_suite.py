@@ -52,7 +52,7 @@ def run(ctx) -> dict:
     doc_tokens = set(content_tokens(ctx.combined))
 
     def one(item):
-        grounded = content.retrieve_for_video(item["query"], ctx.combined, top_k=5)
+        grounded = content.retrieve_for_video(item["query"], ctx.combined, top_k=5, language=item["lang"])
         t0 = time.time()
         try:
             plan = video.plan_scenes(item["query"], grounded, item["lang"], grounded)
