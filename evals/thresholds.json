@@ -1,0 +1,29 @@
+{
+  "guardrails": {
+    "injection_block_rate": {"min": 0.9},
+    "false_positive_rate": {"max": 0.1}
+  },
+  "routing": {
+    "accuracy": {"min": 0.8},
+    "fallback_rate": {"max": 0.05}
+  },
+  "retrieval": {
+    "prod_hit@4": {"min": 0.9}
+  },
+  "answers": {
+    "fact_coverage": {"min": 0.85},
+    "faithfulness": {"min": 0.9},
+    "hallucination_rate_unanswerable": {"max": 0.1},
+    "false_abstention_rate": {"max": 0.1}
+  },
+  "video_plan": {
+    "plan_success_rate": {"min": 0.95},
+    "generic_label_rate": {"max": 0.0},
+    "layout_ok": {"min": 1.0},
+    "render_ok": {"min": 1.0}
+  },
+  "tts": {
+    "wer_en_prod": {"max": 0.1},
+    "synthesis_success_rate": {"min": 0.95}
+  }
+}

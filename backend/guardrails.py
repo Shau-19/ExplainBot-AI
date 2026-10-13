@@ -28,8 +28,14 @@ INJECTION_PATTERNS = [
     r"reveal (your|the) (system|prompt|instructions|api key)",
     r"print (your|the) (system|prompt|instructions|api key)",
     r"what is your (api|groq|openai|elevenlabs) key",
-    r"override",
-    r"sudo",
+    r"override (your|the|all|any|previous|prior) (instructions|rules|guidelines|safety|restrictions|system)",
+    r"\bsudo\s+(mode|su|rm)\b",
+    # Multilingual variants of the classic "ignore previous instructions" attack.
+    # Regex only covers the common phrasings - an LLM/classifier guard is the long-term fix.
+    r"ignor(ez|e|a|ar)\s+(toutes\s+|todas\s+)?(les|las|vos|tus|mes)?\s*(instructions?|instrucciones)",
+    r"oubliez\s+(toutes\s+)?(les|vos)\s+instructions",
+    r"(पिछले|सभी|ऊपर के)\s.*(निर्देश|आदेश).*(अनदेखा|भूल|नज़रअंदाज़)",
+    r"(सिस्टम|system)\s*(प्रॉम्प्ट|प्रोम्प्ट|prompt).*(दिखाओ|बताओ|print|reveal|show)",
     r"<\s*script",          # HTML/JS injection
     r"\{\{.*\}\}",          # template injection
     r"system\s*:",          # fake system message

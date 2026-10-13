@@ -1,0 +1,10 @@
+{"id":"tts-en-01","lang":"en","text":"The server validates the credentials, generates a signed token, and the client includes it in every later request."}
+{"id":"tts-en-02","lang":"en","text":"Each user gets a token bucket. Every request spends one token, and when the bucket is empty the server responds with HTTP 429."}
+{"id":"tts-hi-01","lang":"hi","text":"संविधान के भाग तीन में छह मौलिक अधिकार दिए गए हैं, जो नागरिकों को राज्य की मनमानी कार्रवाई से बचाते हैं।"}
+{"id":"tts-hi-02","lang":"hi","text":"अनुच्छेद सत्रह छुआछूत को समाप्त करता है और किसी भी रूप में इसका पालन करना मना है।"}
+{"id":"tts-es-01","lang":"es","text":"El artículo veintiuno A garantiza la educación gratuita y obligatoria para los niños de seis a catorce años."}
+{"id":"tts-hi-03","lang":"hi","text":"अनुच्छेद बत्तीस के तहत कोई भी व्यक्ति मौलिक अधिकारों के लिए सीधे सर्वोच्च न्यायालय जा सकता है।"}
+{"id":"tts-hi-04","lang":"hi","text":"सरकार ने बच्चों के लिए निःशुल्क और अनिवार्य शिक्षा का अधिकार संविधान में जोड़ा।"}
+{"id":"tts-hi-05","lang":"hi","text":"टोकन बकेट एल्गोरिदम हर उपयोगकर्ता को सीमित संख्या में अनुरोध भेजने की अनुमति देता है।"}
+{"id":"tts-es-02","lang":"es","text":"El servidor valida las credenciales y genera un token firmado que el cliente envía en cada solicitud."}
+{"id":"tts-en-03","lang":"en","text":"Refresh tokens expire after seven days, so users must sign in again once that period is over."}

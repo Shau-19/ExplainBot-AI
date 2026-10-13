@@ -32,36 +32,29 @@ class ContentAgent:
         # Retrieve only relevant chunks — never dump the whole doc into the LLM
         retrieved_context = self._retrieve(query, context, top_k=4)
 
+        # One consistent grounding policy for every format. (The previous prompt told the
+        # model both to fall back to general knowledge AND to refuse - the eval suite showed
+        # this causing intermittent false refusals on questions the context answers.)
+        system_msg = (
+            "You answer questions about the user's uploaded document using only the provided context. "
+            "If the context contains the answer, give it - even when the question is phrased differently "
+            "or written in another language than the document. "
+            "State only what the context says: do not add background, examples, definitions or "
+            "consequences from your own knowledge, even if they are correct. "
+            "Reply with exactly 'This information is not in the uploaded document.' only when the "
+            "context truly does not contain the answer. "
+            "For off-topic requests (jokes, code generation, opinions, general trivia) reply with exactly "
+            "'Please ask something relevant to your uploaded document.'"
+        )
         if format_type in ['audio', 'video']:
-            system_msg = (
-                "Answer from the provided context if the answer is there. "
-                "If not found in context but the question is related to the topic, "
-                "answer from general knowledge but prefix with: "
-                "'Not in your document, but generally: ' "
-                "If completely unrelated to the document topic, say: "
-                "'Please ask something relevant to your uploaded document.' "
-                "Never answer off-topic requests like jokes, code generation, or opinions."
-            )
             format_instruction = (
                 f"Write as a spoken narration script in {lang_name}. "
                 f"Conversational, clear, 100-150 words."
             )
         else:
-            system_msg = (
-                "Answer from the provided context if the answer is there. "
-                "If not found in context but the question is related to the topic, "
-                "answer from general knowledge but prefix with: "
-                "'Not in your document, but generally: ' "
-                "If completely unrelated to the document topic, say: "
-                "'Please ask something relevant to your uploaded document.' "
-                "Never answer off-topic requests like jokes, code generation, or opinions."
-            )
             format_instruction = f"Write a clear technical explanation in {lang_name}."
 
         prompt = (
-            f"Answer ONLY using the context below. Do not use any outside knowledge.\n"
-            f"If the answer cannot be found in the context, respond with exactly:\n"
-            f"\"This information is not in the uploaded document.\"\n\n"
             f"CONTEXT:\n{retrieved_context}\n\n"
             f"QUESTION: {query}\n\n"
             f"{format_instruction}"

@@ -1,0 +1,40 @@
+{"id":"rt-01","query":"What is JWT?","doc":"auth_api","expected":"text"}
+{"id":"rt-02","query":"Define token bucket.","doc":"auth_api","expected":"text"}
+{"id":"rt-03","query":"What is HTTP 429?","doc":"auth_api","expected":"text"}
+{"id":"rt-04","query":"What is a refresh token?","doc":"auth_api","expected":"text"}
+{"id":"rt-05","query":"What is Article 21A?","doc":"fundamental_rights","expected":"text"}
+{"id":"rt-06","query":"Define habeas corpus.","doc":"fundamental_rights","expected":"text"}
+{"id":"rt-07","query":"What is Part III of the Constitution?","doc":"fundamental_rights","expected":"text"}
+{"id":"rt-08","query":"JWT क्या है?","doc":"auth_api","expected":"text"}
+{"id":"rt-09","query":"Explain how rate limiting works.","doc":"auth_api","expected":"audio"}
+{"id":"rt-10","query":"Summarize the security considerations.","doc":"auth_api","expected":"audio"}
+{"id":"rt-11","query":"ELI5 OAuth.","doc":"auth_api","expected":"audio"}
+{"id":"rt-12","query":"How do refresh tokens work?","doc":"auth_api","expected":"audio"}
+{"id":"rt-13","query":"Summarize the fundamental rights.","doc":"fundamental_rights","expected":"audio"}
+{"id":"rt-14","query":"Explain why Article 32 is so important.","doc":"fundamental_rights","expected":"audio"}
+{"id":"rt-15","query":"Give me a summary of the Right to Equality.","doc":"fundamental_rights","expected":"audio"}
+{"id":"rt-16","query":"OAuth कैसे काम करता है?","doc":"auth_api","expected":"audio"}
+{"id":"rt-17","query":"Walk me through the authentication flow step by step.","doc":"auth_api","expected":"video"}
+{"id":"rt-18","query":"Visualize the OAuth 2.0 authorization flow.","doc":"auth_api","expected":"video"}
+{"id":"rt-19","query":"Show the architecture of the rate limiting system.","doc":"auth_api","expected":"video"}
+{"id":"rt-20","query":"Walk through how a request flows from the client to a protected resource.","doc":"auth_api","expected":"video"}
+{"id":"rt-21","query":"Visualize the six Fundamental Rights.","doc":"fundamental_rights","expected":"video"}
+{"id":"rt-22","query":"Walk through how a writ petition reaches the Supreme Court under Article 32.","doc":"fundamental_rights","expected":"video"}
+{"id":"rt-23","query":"authentication flow को step by step समझाइए","doc":"auth_api","expected":"video"}
+{"id":"rt-24","query":"What is the difference between an access token and a refresh token?","doc":"auth_api","expected":null}
+{"id":"rt-25","query":"Explain the architecture of the OAuth flow.","doc":"auth_api","expected":null}
+{"id":"rt-26","query":"Tell me about rate limiting.","doc":"auth_api","expected":null}
+{"id":"rt-27","query":"How does a request get authenticated from login to API access?","doc":"auth_api","expected":null}
+{"id":"rt-28","query":"Break down Article 21 for me.","doc":"fundamental_rights","expected":null}
+{"id":"rt-29","query":"Why does the system use Redis?","doc":"auth_api","expected":null}
+{"id":"rt-30","query":"Describe the six fundamental rights and how they relate to each other.","doc":"fundamental_rights","expected":null}
+{"id":"rt-31","query":"Compare Article 32 and Article 226.","doc":"fundamental_rights","expected":null}
+{"id":"rt-32","query":"What is a supply chain?","doc":"scm_notes","expected":"text"}
+{"id":"rt-33","query":"Define strategic fit.","doc":"scm_notes","expected":"text"}
+{"id":"rt-34","query":"What is the push/pull boundary?","doc":"scm_notes","expected":"text"}
+{"id":"rt-35","query":"Explain the difference between push and pull views of a supply chain.","doc":"scm_notes","expected":"audio"}
+{"id":"rt-36","query":"Summarize the drivers of supply chain performance.","doc":"scm_notes","expected":"audio"}
+{"id":"rt-37","query":"Walk through the cycle view of a supply chain from customer to supplier.","doc":"scm_notes","expected":"video"}
+{"id":"rt-38","query":"Visualize the three decision phases of a supply chain.","doc":"scm_notes","expected":"video"}
+{"id":"rt-39","query":"Why do firms hold safety inventory?","doc":"scm_notes","expected":null}
+{"id":"rt-40","query":"Compare efficient and responsive supply chains.","doc":"scm_notes","expected":null}

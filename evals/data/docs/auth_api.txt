@@ -1,0 +1,59 @@
+# Authentication and API Security Architecture
+
+Modern web applications rely on secure authentication and authorization mechanisms to protect user data and system resources. This document describes the authentication flow, rate limiting strategy, and OAuth implementation used in our system.
+
+---
+
+## Authentication Flow
+
+The authentication workflow begins when a user submits credentials (username and password) through the client application.
+
+1. The client sends credentials to the Authentication API.
+2. The server validates credentials against the user database.
+3. If valid, the server generates a signed JWT (JSON Web Token).
+4. The JWT contains user ID, roles, and expiration timestamp.
+5. The client stores the JWT securely and includes it in subsequent API requests.
+6. The backend verifies the JWT signature and expiration before granting access.
+
+If authentication fails, the server returns a 401 Unauthorized response.
+
+---
+
+## Rate Limiting
+
+Rate limiting is implemented to prevent abuse and denial-of-service attacks.
+
+The system uses a token bucket algorithm:
+
+- Each user or IP address is assigned a token bucket.
+- Tokens are replenished at a fixed rate (e.g., 10 requests per minute).
+- Each incoming request consumes one token.
+- If the bucket is empty, the request is rejected with HTTP 429.
+
+Redis is used to store token counts for distributed rate limiting across multiple API instances.
+
+---
+
+## OAuth 2.0 Authorization
+
+OAuth is used for third-party login and delegated access.
+
+The OAuth authorization flow works as follows:
+
+1. The user is redirected to the authorization server.
+2. The user grants permission to the client application.
+3. The authorization server returns an authorization code.
+4. The client exchanges the code for an access token.
+5. The access token is used to access protected resources.
+
+Access tokens are short-lived. Refresh tokens are used to obtain new access tokens without requiring the user to log in again.
+
+---
+
+## Security Considerations
+
+- All tokens are signed using RSA private keys.
+- HTTPS is enforced for all endpoints.
+- JWT expiration is set to 15 minutes.
+- Refresh tokens expire in 7 days.
+- Failed login attempts are logged and monitored.
