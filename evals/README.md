@@ -51,6 +51,6 @@ Output: `evals/results/latest.md` (human report) and `latest.json` (raw, incl. p
 |---|---|---|
 | Content prompt gave contradictory instructions (answer from general knowledge *and* refuse) | intermittent false refusals, 0-7% run to run | single grounding policy: coverage 0.963 -> 1.000, false abstention 7.4% -> 0%, faithfulness held at 0.996 |
 | Regex guard overfits | 100% on dev set, 33% on held-out attacks | dev fixes shipped (multilingual, "override"/"sudo" false positives); LLM guard is the next step |
-| OpenAI `nova` is poor for Hindi | CER 0.34 vs 0.11 for `alloy` (5 sentences x 3 runs) | production Hindi voice -> `alloy` (naturalness still needs the MOS sheet) |
+| OpenAI voices are all weak on Hindi | CER ~0.28 for both `alloy` and `nova`, 0.32-0.44 for `shimmer`/`onyx`; an earlier run showed alloy at 0.11, which did not replicate (5 sentences is too few) | kept `alloy` (slightly lower WER), but treat voice choice as unproven until the MOS sheet / ElevenLabs is benchmarked; English loan words in Devanagari are the worst case |
 | BM25 misses on a realistic corpus | hit@4 = 0.91; non-English 0.71; 300-word chunks beat 100/200 | candidates: query translation, hybrid/dense retrieval, top_k |
 | Upload limit vs real notes | the SCM deck is 22 MB; `MAX_UPLOAD_BYTES` is 5 MB | product decision, not changed |

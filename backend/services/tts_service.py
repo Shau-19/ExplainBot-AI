@@ -8,7 +8,7 @@ from moviepy.editor import AudioFileClip
 
 OPENAI_VOICE_BY_LANG = {
     "en": "fable",    # warm, natural, storytelling
-    "hi": "alloy",     # evals: CER 0.11 vs 0.34 for nova on Hindi (evals/README.md)
+    "hi": "alloy",     # evals: alloy ~= nova on Hindi CER (0.28), slightly better WER; onyx/shimmer worse (evals/README.md)
     "es": "alloy",
     "de": "onyx",
     "fr": "shimmer",
