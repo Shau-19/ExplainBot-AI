@@ -1,4 +1,4 @@
-from llm import get_client, get_model
+from llm import get_client, get_model, reasoning_kwargs
 from rank_bm25 import BM25Okapi
 from guardrails import log_token_estimate
 
@@ -73,6 +73,7 @@ class ContentAgent:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
+                **reasoning_kwargs(),
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": prompt}

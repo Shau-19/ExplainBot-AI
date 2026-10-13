@@ -1,6 +1,8 @@
 import os
 import time
 import json
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from moviepy.editor import AudioFileClip
 
@@ -118,26 +120,28 @@ class HybridTTSService:
         print(f"🎤 Generating {len(scenes)} audio clips...")
         self._cleanup_old_files()
 
-        audio_results = []
-        for scene in scenes:
+        def synth(scene):
             narration = scene.get("narration", "").strip()
             if len(narration) < 5:
                 print(f"   ⚠️ Scene {scene['id']}: No narration, skipping")
-                continue
+                return None
             try:
                 result = self.generate_audio(text=narration, language=language)
-                audio_results.append({
+                print(f"   ✅ Scene {scene['id']}: {result['duration_actual']:.1f}s via {result['provider']}")
+                return {
                     "scene_id": scene["id"],
                     "audio_path": result["audio_path"],
                     "filename": result["filename"],
                     "duration": result["duration_actual"],
                     "provider": result["provider"]
-                })
-                print(f"   ✅ Scene {scene['id']}: {result['duration_actual']:.1f}s via {result['provider']}")
+                }
             except Exception as e:
                 print(f"   ❌ Scene {scene['id']} audio failed: {e}")
+                return None
 
-        return audio_results
+        # Scenes are independent, so synthesise them concurrently (map keeps scene order)
+        with ThreadPoolExecutor(max_workers=max(1, min(len(scenes), 6))) as pool:
+            return [r for r in pool.map(synth, scenes) if r]
 
     def get_status(self) -> dict:
         el_available = self.el_client is not None and not self.el_quota_exhausted
@@ -182,7 +186,7 @@ class HybridTTSService:
         if not audio_bytes:
             raise Exception("ElevenLabs returned empty audio")
 
-        filename = f"el_{timestamp}.mp3"
+        filename = f"el_{timestamp}_{uuid.uuid4().hex[:6]}.mp3"
         output_path = self.output_dir / filename
         output_path.write_bytes(audio_bytes)
 
@@ -199,7 +203,7 @@ class HybridTTSService:
         response = self.oai_client.audio.speech.create(
             model="tts-1-hd", voice=voice, input=text, speed=1.0
         )
-        filename = f"oai_{timestamp}.mp3"
+        filename = f"oai_{timestamp}_{uuid.uuid4().hex[:6]}.mp3"
         output_path = self.output_dir / filename
         response.stream_to_file(str(output_path))
 

@@ -1,7 +1,7 @@
 
 
 import json
-from llm import get_client, get_model
+from llm import get_client, get_model, reasoning_kwargs
 
 
 STRICT_PROMPT = """You decide the best format to explain content to a user.
@@ -55,6 +55,7 @@ class DecisionAgent:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
+                **reasoning_kwargs(),
                 messages=[
                     {"role": "system", "content": "You respond only with valid JSON. No markdown, no extra text."},
                     {"role": "user", "content": prompt}

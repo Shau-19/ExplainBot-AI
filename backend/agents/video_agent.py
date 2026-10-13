@@ -1,5 +1,5 @@
 import json
-from llm import get_client, get_model
+from llm import get_client, get_model, reasoning_kwargs
 from guardrails import log_token_estimate
 
 LANGUAGE_NAMES = {
@@ -107,6 +107,7 @@ Rules:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
+                **reasoning_kwargs(),
                 messages=[
                     {
                         "role": "system",

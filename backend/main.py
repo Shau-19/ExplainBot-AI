@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import shutil, time, re
+from concurrent.futures import ThreadPoolExecutor
 from pypdf import PdfReader
 from dotenv import load_dotenv
 from langdetect import detect, LangDetectException
@@ -398,14 +399,19 @@ async def generate_video(
             print(f"   Scene {scene['id']}: {scene['type']} (~{scene.get('duration', 0):.0f}s)")
 
         print("\n📊 Rendering diagram...")
-        diagram_path = diagram_service.mermaid_to_png(scene_plan['mermaid_diagram'])
+        # Diagram (network render) and scene audio are independent — run them concurrently
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            diagram_future = pool.submit(
+                diagram_service.mermaid_to_png, scene_plan['mermaid_diagram']
+            )
+            audio_future = pool.submit(
+                tts_service.generate_audio_batch,
+                scene_plan['scenes'],
+                effective_language
+            )
+            diagram_path = diagram_future.result()
+            audio_clips = audio_future.result()
         print("✅ Diagram rendered")
-
-        print("\n🎤 Generating scene audio...")
-        audio_clips = tts_service.generate_audio_batch(
-            scenes=scene_plan['scenes'],
-            language=effective_language
-        )
 
         if not audio_clips:
             raise Exception("Audio generation failed for all scenes")

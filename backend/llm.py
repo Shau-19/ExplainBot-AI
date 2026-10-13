@@ -12,3 +12,9 @@ def get_model() -> str:
 
 def get_client() -> OpenAI:
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def reasoning_kwargs() -> dict:
+    # These tasks (routing, grounded Q&A, scene JSON) don't need chain-of-thought;
+    # "none" cuts per-call latency roughly in half. Set OPENAI_REASONING_EFFORT=low|medium to override.
+    return {"reasoning_effort": os.getenv("OPENAI_REASONING_EFFORT", "none")}
